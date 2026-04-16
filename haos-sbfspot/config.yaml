@@ -1,12 +1,12 @@
 ---
-name: HAOS-SBFspot
-version: 2025.2.1
+name: HAOS-SBFspot (powerslider)
+version: 2026.4.17
 slug: haos-sbfspot
-description: Manage SBFspot with a simple interface
-url: "https://github.com/habuild/hassio-addons/tree/main/haos-sbfspot"
+description: SBFspot addon — configurable polling + upstream bug fixes
+url: "https://github.com/MaximV93/hassio-addons/tree/main/haos-sbfspot"
 stage: experimental
 
-image: "ghcr.io/habuild/{arch}-addon-haos-sbfspot"
+image: "ghcr.io/maximv93/{arch}-addon-haos-sbfspot"
 arch:
   - armhf
   - armv7
@@ -43,6 +43,12 @@ options:
   PVoutput_SID: "!secret pvoSID"
   PVoutput_Key: "!secret pvoAPIkey"
   LogLevel: info
+  # --- powerslider fork additions ---
+  PollIntervalDay: 5
+  PollIntervalNight: 0
+  DayStart: 6
+  DayEnd: 22
+  EnableUpload: true
 schema:
   Connection_Type: list(Bluetooth|Ethernet)?
   Sensors_HA: list(No||Create||Purge|)?
@@ -93,3 +99,9 @@ schema:
   PVoutput_SID: "password?"
   PVoutput_Key: "password?"
   LogLevel: list(debug|info||warning||error)?
+  # --- powerslider fork additions ---
+  PollIntervalDay: "int(1,30)?"
+  PollIntervalNight: "int(0,60)?"
+  DayStart: "int(0,23)?"
+  DayEnd: "int(1,23)?"
+  EnableUpload: "bool?"

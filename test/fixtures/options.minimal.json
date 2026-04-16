@@ -1,0 +1,13 @@
+{
+  "Connection_Type": "Bluetooth",
+  "Sensors_HA": "No",
+  "BTAddress": "00:80:25:21:32:35",
+  "Password": "0000",
+  "Plantname": "testplant",
+  "MQTT_User": "u",
+  "MQTT_Pass": "p",
+  "MQTT_Topic": "homeassistant/sbfspot_{plantname}/sbfspot_{serial}",
+  "MQTT_Data": "EToday,ETotal",
+  "PVoutput_SID": "",
+  "PVoutput_Key": ""
+}

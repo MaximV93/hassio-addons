@@ -4,6 +4,9 @@ FROM $BUILD_FROM AS builder-base
 
 # Execute during the build of the image
 ARG TEMPIO_VERSION BUILD_ARCH
+# powerslider fork: pin SBFspot to a released tag (B4). Upstream had no pin;
+# every rebuild pulled whatever was on master. Override via --build-arg.
+ARG SBFSPOT_VERSION=V3.9.12
 RUN \
     curl -sSLf -o /usr/bin/tempio \
     "https://github.com/home-assistant/tempio/releases/download/${TEMPIO_VERSION}/tempio_${BUILD_ARCH}"
@@ -18,18 +21,18 @@ RUN apk update && apk add --no-cache \
     bluez=5.79-r0 \
     bluez-dev=5.79-r0 \
     boost-dev=1.84.0-r2 \
-    curl-dev=8.12.1-r0 \
-    git=2.47.2-r0 \
+    curl-dev=8.14.1-r2 \
+    git=2.47.3-r0 \
     g++=14.2.0-r4 \
     make=4.4.1-r2 \
-    mariadb-dev=11.4.5-r0\
+    mariadb-dev=11.4.8-r0 \
     mosquitto-clients=2.0.20-r0 \
-    tzdata=2025a-r0
-           
-# download and build SBFspot
+    tzdata=2026a-r0
+
+# download and build SBFspot — pinned for reproducibility
 WORKDIR /tmp
 RUN \
-    git clone https://github.com/sbfspot/SBFspot.git . \
+    git clone --depth 1 --branch "${SBFSPOT_VERSION}" https://github.com/sbfspot/SBFspot.git . \
     && sed -i s/mariadbclient/mariadb/ ./SBFspot/makefile \
     && make -C ./SBFspot mariadb \
     && sed -i s/mariadbclient/mariadb/ ./SBFspotUploadDaemon/makefile \
@@ -52,10 +55,10 @@ RUN apk update && apk add --no-cache \
     bluez-libs=5.79-r0 \
     nano=8.2-r0 \
     libstdc++=14.2.0-r4 \
-    mariadb-common=11.4.5-r0 \
+    mariadb-common=11.4.8-r0 \
     mariadb-connector-c=3.3.10-r0 \
     ncurses-libs=6.5_p20241006-r3 \
-    libcurl=8.12.1-r0 \
+    libcurl=8.14.1-r2 \
     mosquitto-clients=2.0.20-r0
     
     #tzdata=2023c-r1 
@@ -80,21 +83,12 @@ COPY --from=builder-base /tmp/SBFspot/TagList* /usr/bin/sbfspot/
 
 COPY rootfs /
 
-RUN chmod a+x /etc/services.d/sbfspot/** /usr/bin/sbfspot/**
+RUN chmod a+x /etc/services.d/sbfspot/** /etc/cont-init.d/** /usr/bin/sbfspot/**
 
-# --- install cron ---
-# set shell
-RUN echo 'SHELL=/bin/bash' > /etc/crontabs/root
-# update sensors after restart
-RUN echo '@reboot sleep 30 && /usr/bin/sbfspot/SBFspot -v -ad0 -am0 -mqtt -finq > /dev/stdout' >> /etc/crontabs/root
-# daily data SBFspot
-RUN echo '*/5 6-22 * * *    /usr/bin/sbfspot/SBFspot -v -ad1 -am0 -ae0 -mqtt > /dev/stdout' >> /etc/crontabs/root
-# monthly data SBFspot archive upload at 5:55am now with -mqtt call
-RUN echo '55 05 * * *       /usr/bin/sbfspot/SBFspot -v -sp0 -ad14 -am1 -ae1 -mqtt -finq > /dev/stdout' >> /etc/crontabs/root
-# start SBFspotUpload 1 min after boot
-RUN echo '@reboot sleep 60 && /usr/bin/sbfspot/SBFspotUploadDaemon -c /usr/bin/sbfspot/SBFspotUpload.cfg > /dev/stdout' >> /etc/crontabs/root
-#  Log SBFspotUpload to HA logging window  defunct now in version 3.9.6+ sbfspot, using it for the timed message
-RUN echo '*/5 6-22 * * * /usr/bin/sbfspot/taillog.sh' >> /etc/crontabs/root
+# powerslider fork: crontab is generated at runtime by
+# /etc/cont-init.d/01-generate-crontab.sh from addon options
+# (PollIntervalDay / PollIntervalNight / DayStart / DayEnd / EnableUpload).
+# Upstream's hardcoded RUN echo lines removed.
 
 # Labels
 LABEL \
@@ -108,11 +102,11 @@ LABEL \
     org.label-schema.build-date=${BUILD_DATE} \
     org.label-schema.name="HAOS-SBFspot" \
     org.label-schema.schema-version="1.0" \
-    org.label-schema.url="https://github.com/habuild/hassio-addons/tree/main/haos-sbfspot" \
-    org.label-schema.usage="https://github.com/habuild/hassio-addons/tree/main/haos-sbfspot/README.md" \
+    org.label-schema.url="https://github.com/MaximV93/hassio-addons/tree/main/haos-sbfspot" \
+    org.label-schema.usage="https://github.com/MaximV93/hassio-addons/tree/main/haos-sbfspot/README.md" \
     org.label-schema.vcs-ref=${BUILD_REF} \
-    org.label-schema.vcs-url="https://github.com/habuild/hassio-addons" \
-    org.label-schema.vendor="Hasqt"
+    org.label-schema.vcs-url="https://github.com/MaximV93/hassio-addons" \
+    org.label-schema.vendor="powerslider"
 
 
 #Launch nginx with debug options. not working yet

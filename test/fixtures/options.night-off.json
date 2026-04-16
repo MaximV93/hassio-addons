@@ -1,0 +1,18 @@
+{
+  "Connection_Type": "Bluetooth",
+  "Sensors_HA": "No",
+  "BTAddress": "00:80:25:21:32:35",
+  "Password": "sZ4kmKTxOdHN",
+  "Plantname": "powerslider",
+  "MQTT_User": "sbfspot",
+  "MQTT_Pass": "p",
+  "MQTT_Topic": "homeassistant/sbfspot_{plantname}/sbfspot_{serial}",
+  "MQTT_Data": "PACTot,ETotal",
+  "PVoutput_SID": "",
+  "PVoutput_Key": "",
+  "PollIntervalDay": 5,
+  "PollIntervalNight": 0,
+  "DayStart": 6,
+  "DayEnd": 22,
+  "EnableUpload": false
+}

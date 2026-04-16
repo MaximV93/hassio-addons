@@ -50,8 +50,12 @@ CONFIG_MQTT_ITEMDELIMITER="$(bashio::config 'MQTT_ItemDelimiter' 'comma')"
 CONFIG_MQTT_DATA="$(bashio::config 'MQTT_Data')"
 #  CONFIG_LOGDIR="$(bashio::config 'LogDir')"
 CONFIG_LOGLEVEL="$(bashio::config 'LogLevel' 'info')"
-CONFIG_PVOUTPUT_SID="$(bashio::config 'PVoutput_SID' '0123456789:12345')"
-CONFIG_PVOUTPUT_KEY="$(bashio::config 'PVoutput_Key' 'fake9364fake4545afke834fake')"
+# powerslider fork B1: bashio::config default only applies when key is MISSING
+# from options.json, not when value is "". Explicit fallback if empty.
+CONFIG_PVOUTPUT_SID="$(bashio::config 'PVoutput_SID' '')"
+: "${CONFIG_PVOUTPUT_SID:=0123456789:12345}"
+CONFIG_PVOUTPUT_KEY="$(bashio::config 'PVoutput_Key' '')"
+: "${CONFIG_PVOUTPUT_KEY:=fake9364fake4545afke834fake}"
 
 cat > "$CFG_PATH" <<EOL
 ################################################################################
@@ -245,7 +249,8 @@ MQTT_Port=$CONFIG_MQTT_PORT
 MQTT_Topic=$CONFIG_MQTT_TOPIC
 MQTT_ItemFormat=$CONFIG_MQTT_ITEMFORMAT
 MQTT_ItemDelimiter=$CONFIG_MQTT_ITEMDELIMITER
-MQTT_PublisherArgs=-h $(bashio::config 'MQTT_Host' 'core-mosquitto') -u $(bashio::config 'MQTT_User') -P $(bashio::config 'MQTT_Pass') -t {topic} -m "{{message}}" -d
+# powerslider fork B2: dropped '-d' flag which leaked MQTT password to stdout
+MQTT_PublisherArgs=-h $(bashio::config 'MQTT_Host' 'core-mosquitto') -u $(bashio::config 'MQTT_User') -P $(bashio::config 'MQTT_Pass') -t {topic} -m "{{message}}"
 MQTT_Data=$CONFIG_MQTT_DATA
 EOL
 
