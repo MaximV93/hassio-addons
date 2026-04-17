@@ -27,9 +27,19 @@ pub() {
         -t "$1" -m "$2" --retain --quiet 2>/dev/null || true
 }
 
+# V3-03: adding `object_id` to each discovery config forces HA to use it as
+# entity_id instead of slug'ing device.name + unique_id. Without it, our sensors
+# ended up as `sensor.haos_sbfspot_powerslider_sbfspot_cron_heartbeat`. With it,
+# they become `sensor.sbfspot_cron_heartbeat` (cleaner, matches unique_id).
+# NOTE: users upgrading past 2026.4.17.9 will see their existing long-named
+# entities go stale (no updates). Repoint dashboards/automations to the new
+# short names. The old entities become orphans and can be removed via Settings
+# → Devices → MQTT → sbfspot_addon device (then orphans appear for deletion).
+#
 # Heartbeat timestamp sensor
 pub "homeassistant/sensor/sbfspot_cron_heartbeat/config" '{
     "name": "SBFspot Cron Heartbeat",
+    "object_id": "sbfspot_cron_heartbeat",
     "state_topic": "homeassistant/sbfspot/cron_heartbeat",
     "device_class": "timestamp",
     "unique_id": "sbfspot_cron_heartbeat",
@@ -46,6 +56,7 @@ pub "homeassistant/sensor/sbfspot_cron_heartbeat/config" '{
 # Last run status sensor (ok | hang | failed-N | missing)
 pub "homeassistant/sensor/sbfspot_last_status/config" '{
     "name": "SBFspot Last Run Status",
+    "object_id": "sbfspot_last_status",
     "state_topic": "homeassistant/sbfspot/last_status",
     "unique_id": "sbfspot_last_status",
     "entity_category": "diagnostic",
@@ -61,6 +72,7 @@ pub "homeassistant/sensor/sbfspot_last_status/config" '{
 # V2-01: hang counter (total SIGKILL events from timeout wrapper)
 pub "homeassistant/sensor/sbfspot_hang_count/config" '{
     "name": "SBFspot Hang Count",
+    "object_id": "sbfspot_hang_count",
     "state_topic": "homeassistant/sbfspot/hang_count",
     "unique_id": "sbfspot_hang_count",
     "entity_category": "diagnostic",
@@ -77,6 +89,7 @@ pub "homeassistant/sensor/sbfspot_hang_count/config" '{
 # Last run duration (in seconds)
 pub "homeassistant/sensor/sbfspot_last_duration/config" '{
     "name": "SBFspot Last Run Duration",
+    "object_id": "sbfspot_last_duration",
     "state_topic": "homeassistant/sbfspot/last_duration",
     "unique_id": "sbfspot_last_duration",
     "entity_category": "diagnostic",

@@ -1,252 +1,104 @@
----
+# HAOS-SBFspot (powerslider fork)
 
-# SBFspot addon for HAOS
+Bluetooth-based polling for **SMA Sunny Boy** solar inverters (HF-30 series and compatible), publishing to Home Assistant via MQTT and optionally archiving to MariaDB + PVOutput.
 
-![Version](https://img.shields.io/badge/dynamic/yaml?label=Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2Fhabuild%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
-![Project Stage](https://img.shields.io/badge/dynamic/yaml?color=blueviolet&label=Project%20Stage&query=%24.stage&url=https%3A%2F%2Fraw.githubusercontent.com%2Fhabuild%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
-![Arch](https://img.shields.io/badge/dynamic/yaml?color=success&label=Arch&query=%24.arch&url=https%3A%2F%2Fraw.githubusercontent.com%2Fhabuild%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
-![Project Maintenance][maintenance-shield] [![CI](https://github.com/habuild/hassio-addons/actions/workflows/addon-ci.yaml/badge.svg)](https://github.com/habuild/hassio-addons/actions/workflows/addon-ci.yaml)
+> This is a [powerslider fork](https://github.com/MaximV93/hassio-addons) of `habuild/hassio-addons/haos-sbfspot`. Diffs from upstream: configurable polling, bug fixes, heartbeat sensors, persistent logs. See [FORK.md](https://github.com/MaximV93/hassio-addons/blob/main/FORK.md) for details.
 
-[project-stage-shield]: https://img.shields.io/badge/project%20stage-experimental-yellow.svg
-[maintenance-shield]: https://img.shields.io/maintenance/yes/2024.svg
+## Prerequisites
 
-[![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fhabuild%2Fhassio-addons)
+- **SMA inverter** with Bluetooth (HF series, pre-2014 models). Modern Speedwire-only inverters won't work — use the official HA *SMA Solar* integration instead.
+- **Bluetooth host adapter** reachable from the HA machine (USB dongle passthrough from hypervisor if HA runs on a VM).
+- **MQTT broker** — the *Mosquitto broker* addon is the easy default.
+- **MariaDB addon** — only required if `EnableUpload: true` (PVOutput uploader reads from DB). Skip if you just want live polling in HA.
+- **Bluetooth password** for your inverter — usually `0000` by default, but installers often change it. Ask your installer, check Sunny Explorer, or reset via the inverter display.
 
-This [home assistant](https://www.home-assistant.io/getting-started/) add-on provides a wrapper for the **Bluetooth** version of [![SBFspot](https://img.shields.io/badge/dynamic/json?color=blue&label=SBFspot&query=tag_name&suffix=%20latest&url=https%3A%2F%2Fgithub.com%2FSBFspot%2FSBFspot%2Freleases%2Flatest)](https://github.com/SBFspot/SBFspot/releases/latest)
+## First-install checklist
 
-This add-on runs a crontab service for SBFspot and SPFspotUploader at 5 minutely daytime interval.
+1. Add this repository in Supervisor → Add-on store → 3-dot menu → Repositories:  
+   `https://github.com/MaximV93/hassio-addons`
+2. Install **HAOS-SBFspot (powerslider)** from the store.
+3. Open the addon's *Configuration* tab and fill in **at minimum**:
+   - `BTAddress` — inverter's Bluetooth MAC (format `00:80:25:XX:XX:XX`). Find it via `bluetoothctl scan on` on the host or a phone BT scanner.
+   - `Password` — inverter user-group password.
+   - `LocalBTAddress` — host BT adapter MAC (optional; autodetected).
+   - `Plantname` — anything, used in MQTT topic (default `SBFspot`).
+   - `Latitude` / `Longitude` — your location, for SBFspot's sunrise/sunset calculation.
+   - `Timezone` — `Europe/Brussels`, `America/New_York`, etc.
+   - `MQTT_User` / `MQTT_Pass` — credentials for the Mosquitto broker.
+4. Start the addon.
+5. (Multi-inverter only) After one successful run, set `MIS_Enabled: true` and the primary inverter's `BTAddress`; SBFspot auto-discovers secondary inverters on the same BT NetID.
+6. To create Home Assistant sensors for the inverter data, set `Sensors_HA: "Create"` and restart **once**. The fork tracks this as a one-shot via `/data/.sensors_published`; it won't republish on subsequent restarts.
 
-[PVoutput](https://pvoutput.org/) account and API are required to use the upload feature.
+## Polling configuration (powerslider fork)
 
-[Mariadb addon](https://my.home-assistant.io/redirect/supervisor_addon/?addon=core_mariadb) or similiar SQL database, is needed to store the data for upload to PVOutput.
+| Option | Default | Range | Effect |
+|---|---|---|---|
+| `PollIntervalDay` | 5 | 1–30 minutes | How often SBFspot runs during the daytime window |
+| `PollIntervalNight` | 0 | 0–60 minutes | How often SBFspot runs outside the daytime window. `0` disables night polling. |
+| `DayStart` | 6 | 0–23 hour | Daytime window start (local time) |
+| `DayEnd` | 22 | 1–23 hour | Daytime window end (inclusive) |
+| `EnableUpload` | true | bool | Start `SBFspotUploadDaemon` for PVOutput. Set `false` if not using PVOutput. |
+| `SBFspotTimeoutSec` | 0 | 0–600 seconds | Explicit hard kill timeout per SBFspot run. `0` = auto (`PollIntervalDay*60-10`). Raise if your BT is marginal and legit runs exceed 50 s. |
 
-[phpMyAdmin](https://my.home-assistant.io/redirect/supervisor_addon/?addon=a0d7b954_phpmyadmin&repository_url=https%3A%2F%2Fgithub.com%2Fhassio-addons%2Faddon-phpmyadmin) is required to create the DB structure.
+## Heartbeat sensors (powerslider fork)
 
-[MQTT broker](https://my.home-assistant.io/redirect/supervisor_addon/?addon=core_mosquitto) is needed to send MQTT messages to home Assistant.
+Four diagnostic sensors auto-published via MQTT discovery. Naming: HA prefixes with device name → `sensor.haos_sbfspot_powerslider_sbfspot_*`.
 
-## Installation
+| Entity | Type | Purpose |
+|---|---|---|
+| `..._cron_heartbeat` | timestamp | Updated every minute regardless of SBFspot success; proves cron is alive. |
+| `..._last_run_status` | enum: `ok` \| `hang` \| `failed-N` \| `missing` | Outcome of most recent SBFspot invocation. |
+| `..._hang_count` | total_increasing | Number of times the timeout wrapper SIGKILL'd SBFspot. |
+| `..._last_run_duration` | seconds | Duration of most recent SBFspot run. |
 
----
+**Detecting silent failures**: `cron_heartbeat` fresh + `haos_sbfspot_sma_timestamp` stale (> 3× poll interval) means SBFspot is running but not publishing → alert on this in an automation.
 
-### Options and Secrets
+## Persistent logs
 
-If you want to template your options with secrets, the below template can be used.
+`/data/logs/sbfspot-YYYY-MM-DD.log` — daily file, 7-day rotation. Access via the Samba share addon.
 
-These names auto default so you shouldn't need to confirm(save) any options on installation
-
-It should all just default when starting the addon.
-
-```
-##template for secrets.yaml
-## a restart might be required after Saving your secrets file
-
-BTAddress: ""          ## Inverter BT mac
-SBFpassword: ""        ## Inverter password
-LocalBTAddress: ""     # host BT mac - can be empty
-SBFplantname: ""
-
-mariadb_pw: ""
-mqtt_user: ""
-mqtt_pass: ""
-
-home_lat: ""
-home_long: ""
-Timezone: ""
-                             ### IF YOU WANT TO SKIP PVoutput
-pvoSID: "0123456789:12345"   ### will default to fake if left empty
-pvoAPIkey: "fake9364fake4545afke834fake"   ### will default to fake if left empty
-```
-
-The above options are the only required options if you want to fill out the options manually.
-
-### The rest of the options default to standard HAOS server addresses and SBFspot defaults
-
-<details><summary> OPTIONS Image </summary>
-<p>
-
-![screenshot](https://raw.githubusercontent.com/habuild/hassio-addons/main/.images/UIoptions.PNG)
-
-</p>
-</details>
-
-<br></br>
-
-### PVoutput SIDs
-
-PVoutput SIDs are a combination of your inverter serial number and your PVoutput Account ID.
-
-PVoutput SIDs can be comma separated entries with Inverter serial and separate PVO account IDs.
-
-```
-InverterSerial:AccID
-
-eg. Inverter1:acc1,Inverter2:acc2
-
-0123456789:12345,2222222222:54321
+```bash
+# From an SSH shell on your HA machine:
+ls -la /mnt/data/supervisor/addons/data/*haos-sbfspot*/logs/
+tail -100 /mnt/data/supervisor/addons/data/*haos-sbfspot*/logs/sbfspot-$(date +%Y-%m-%d).log
 ```
 
-### MIS_Enabled Bluetooth Multi Inverter support.
+Supervisor's own addon log only keeps the last ~100 lines; for anything older, use the file.
 
-<b>This option is only for Bluetooth multi-inverter systems.</b>
+## MIS (multi-inverter) setup
 
-Each inverter first needs to be run through the sensor create setting to enable the MQTT sensors.
-Each inverter needs to run through on it's BTAddress.
-(You may have to tweak the Plantname and topic slightly)
+> All inverters + repeater must share the same **NetID** (not `1`). Set per-inverter via Sunny Explorer or the inverter display. NetID `1` is reserved for single-inverter installs.
 
-Once the sensors are created set the Sensor create option back to NO (Disable the sensor creation setting)
+1. Set `BTAddress` to any one of the inverters (doesn't matter which).
+2. Set `MIS_Enabled: true`.
+3. Restart addon. SBFspot queries all devices on the piconet in one session.
 
-You can now enable MIS under the GUI or yaml options configuration.
+Secondary inverters' sensors need to be published via the separate `haos-sbfspot-sensorsgen` addon (upstream, unchanged in our fork). See that addon's docs.
 
-```
-MIS_Enabled: 1
-```
+## Troubleshooting
 
-The NET ID needs to be greater than 1 on all inverters.
+See [TROUBLESHOOTING.md](https://github.com/MaximV93/hassio-addons/blob/main/docs/TROUBLESHOOTING.md) for common failure modes and diagnostics.
 
-PVoutput SIDs can be comma separated entries with Inverter serial and separate PVO account IDs.
+Quick hits:
+- **"Logon failed"** → wrong `Password`. Ask installer or try `0000` (factory default).
+- **"bthConnect() returned -1"** → BT adapter not reachable. Check USB dongle pass-through; `host_network: true` must be set in addon config (default in this fork).
+- **Empty data during day** → inverter asleep, grid fault, or `Plantname` doesn't match topic pattern. Check addon log.
+- **Hang count rising** → BT signal marginal. See [TROUBLESHOOTING.md §7](https://github.com/MaximV93/hassio-addons/blob/main/docs/TROUBLESHOOTING.md).
 
-```
-eg. Inverter1:acc1,Inverter2:acc2
+## All options
 
-0123456789:12345,2222222222:54321
-```
+See `config.yaml` for the full schema. Beyond fork-added options (see table above), all upstream SBFspot options are passed through unchanged: `MIS_Enabled`, `SynchTime`, `BTConnectRetries`, `Locale`, `CalculateMissingSpotValues`, CSV export settings, etc. Defaults match SBFspot's built-in defaults; no need to set anything you don't specifically need.
 
-refer to [Issue 42 for more info](https://github.com/habuild/hassio-addons/issues/42)
+## Architectural decisions
 
-<br></br>
+Why certain choices were made, for the curious:
 
-## MQTT
+- [ADR-001: `timeout` over `flock`](https://github.com/MaximV93/hassio-addons/blob/main/docs/ADR-001-timeout-over-flock.md) — how we prevent overlap without dead-locking on hangs
+- [ADR-002: `host_network: true`](https://github.com/MaximV93/hassio-addons/blob/main/docs/ADR-002-host-network-required.md) — why we can't drop it
+- [ADR-003: four-sensor heartbeat](https://github.com/MaximV93/hassio-addons/blob/main/docs/ADR-003-heartbeat-architecture.md) — why a single status sensor isn't enough
 
-### Leave this option set to NO until you have a working MQTT connection.
+## Credits
 
-#### Add MQTT mqtt user and password to options.
-
-The other options default automatically if blank.
-If you need to change the broker address, you can stil use the options.
-
-#### HA Sensor Generation
-
-<details><summary>MQTT Sensor list</summary>
-<p>
-
-Description available in the SBFspot config file.
-
-[MASTER SBFspot CFG](https://raw.githubusercontent.com/SBFspot/SBFspot/master/SBFspot/SBFspot.cfg)
-
-- Default list of Sensors for MQTT_Data
-
-```
-PrgVersion,Plantname,Timestamp,SunRise,SunSet,InvSerial,InvName,InvTime,InvStatus,InvSwVer,InvClass,InvType,InvTemperature,EToday,ETotal,GridFreq,PACTot,PAC1,UAC1,IAC1,OperTm,FeedTm,PDCTot,UDC1,UDC2,IDC1,IDC2,PDC1,PDC2,BTSignal
-```
-
-- Current available list of sensors
-
-```
-PrgVersion,Plantname,Timestamp,SunRise,SunSet,InvSerial,InvName,InvTime,InvStatus,InvSwVer,InvClass,InvType,InvTemperature,InvGridRelay,EToday,ETotal,GridFreq,PACTot,PAC1,PAC2,PAC3,UAC1,UAC2,UAC3,IAC1,IAC2,IAC3,OperTm,FeedTm,PDCTot,PDC1,PDC2,PDC,UDC1,UDC2,UDC,IDC1,IDC2,IDC,BTSignal,BatTmpVal,BatVol,BatAmp,BatChaStt,InvWakeupTm,InvSleepTm,MeteringWOut,MeteringWIn,MeteringWTot
-
-```
-
-</p>
-</details>
-
-<details><summary>MQTT Image</summary>
-<p>
-
-![screenshot](https://raw.githubusercontent.com/habuild/hassio-addons/main/.images/mqttcap.PNG)
-
-</p>
-</details>
-
-It is advised to **backup and/or disable existing yaml sensors** to avoid naming conflicts.
-
-#### Autogen Sensors - No, Create, Purge, options
-
-<details><summary><b>No</b> sensors. HAOS-SBFspot will run without generating sensors. It will use yaml or mqtt sensors. </summary>
-<p>
-
-- Use this option if you want to keep your existing yaml energy sensor on the energy dashboard.
-
-  You can make new sensors. You can't convert the new sensors to keep the old energy dash values.
-
-</p>
-</details>
-
-<details><summary><b>Create</b> sensors. HAOS-SBFspot will automatically create sensors in the MQTT Integration. </summary>
-<p>
-
-[MQTT Integration](https://www.home-assistant.io/integrations/mqtt)
-
-It is advised to **backup and/or disable existing yaml sensors** to avoid naming conflicts.
-
-Updating the new energy sensor to follow the old energy sensor on the energy dashboard is not possible in HA.
-
-    - This option will create topics using your plantname and inverter serial number
-
-       - homeassistant/sensor/sbfspot_{*Your Plantname*}/sbf_spot{*your inv serial*}{*SensorType*}/config
-
-       - homeassistant/sbfspot_{Your Plantname}/sbf_spot{Your Inv Serial} is the state_topic
-
-</p>
-</details>
-
-<details><summary><b>Purge</b> sensors. HAOS-SBFspot will send empty topics to your broker address to clear Retained topics. </summary>
-<p>
-
-- This will fail if you change topics between creating and purging sensors.
-- You can use MQTT explorer or similar MQTT tool to manually remove the topics if this occurs.
-
-</p>
-</details>
-
-<details><summary> Earlier versions and yaml mqtt sensors </summary>
-<p>
-
-### Prior to 2022.9.1
-
-[haos-sbfspot_sensors.yaml](https://github.com/habuild/hassio-addons/blob/main/.images/sbfspot_sensors.yaml) I use packages to include these yaml sensors. You will need to change to match your plant name and serial as you have set in the add-on configuration options.
-
-**MQTT options argument** [configuration options](https://github.com/habuild/hassio-addons/blob/main/.images/Example_Config.yaml) The MQTT Username, and Password need to be hardcoded into the **MQTT_PublisherArgs:** The **{host}** **{topic}** and **{{message}}** will be picked up from options.
-
-**MQTT_PublisherArgs:** **'-h {host} -u Your_MQTT_Username -P Your_MQTT_password -t {topic} -m "{{message}}" -d -r'**
-
-<i> Publisher arguments has been removed to allow for sensors </i>
-
-**-d** is for MQTT debug in log. Which is helpful for confirming the MQTT messages are actually being sent.
-
-**-r** is to retain messages. it is advised against using retain flag
-
-</p>
-</details>
-<br></br>
-
-## MariaDB
-
-### Initial database creation.
-
-Download and import either [No Drop DB create](https://github.com/habuild/hassio-addons/blob/main/.images/CreateMySQLDB_no_drop.sql) **or** [Create My SQL.sql](https://github.com/SBFspot/SBFspot/blob/master/SBFspot/CreateMySQLDB.sql) in [phpMyAdmin](https://github.com/hassio-addons/addon-phpmyadmin) to create your database. **IF** you haven't already created the database previously, use the NO Drop version. You will also need to add the Database and User/Password to MariaDB and allocate the port.
-
-![screenshot](https://raw.githubusercontent.com/habuild/hassio-addons/main/.images/MariaDB%20setup.PNG)
-
-<br></br>
-
-## Container Data paths
-
-In HAOS (home assistant operating system) the /data/ path arrives at `/mnt/data/supervisor/addons/data/{slug_haos-sbfspot}` on the host.
-
-In docker/supervisor the /data/ path arrives at `/usr/share/hassio/addons/data/{slug_haos-sbfspot}` on the host.
-
-## **Link to official SBFspot Documentation**
-
-Refer to the [SBFspot Wiki](https://github.com/sbfspot/sbfspot/wiki) for documentation and FAQ about SBFspot.
-
-### **Special thanks to:**
-
-- The sbfspot team for SPFspot.
-
-![Supports aarch64 Architecture][aarch64-shield]
-![Supports armhf Architecture][armhf-shield]
-![Supports armv7 Architecture][armv7-shield]
-
-[aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
-[armhf-shield]: https://img.shields.io/badge/armhf-yes-green.svg
-[armv7-shield]: https://img.shields.io/badge/armv7-yes-green.svg
+- [SBFspot](https://github.com/SBFspot/SBFspot) — the C++ polling binary (upstream of upstream)
+- [habuild/hassio-addons](https://github.com/habuild/hassio-addons) — original HAOS wrapper addon this forks from
+- [powerslider/hassio-addons](https://github.com/MaximV93/hassio-addons) — this fork, maintained by MaximV93

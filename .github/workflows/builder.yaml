@@ -1,6 +1,14 @@
 ---
 name: Builder
 
+# powerslider fork V3-06: cancel in-progress builds on new push to the same
+# branch. Without this, 5 rapid pushes queue 5 sequential builds (~10 min each)
+# burning GHA minutes and delaying the latest release. Only the final push's
+# build matters when we're iterating.
+concurrency:
+  group: builder-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   BUILD_ARGS: "--test"
   MONITORED_FILES: "config.*"
