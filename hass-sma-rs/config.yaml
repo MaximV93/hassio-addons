@@ -1,0 +1,53 @@
+---
+name: hass-sma-rs (Rust rewrite)
+version: 0.1.0
+slug: hass-sma-rs
+description: SMA Sunny Boy BT daemon — Rust rewrite, parallel-run alongside haos-sbfspot
+url: "https://github.com/MaximV93/hass-sma-rs"
+stage: experimental
+
+image: "ghcr.io/maximv93/{arch}-addon-hass-sma-rs"
+arch:
+  - amd64
+  - aarch64
+
+# BT needs host_network (AF_BLUETOOTH sockets bind on hci0 in host netns).
+# Learned from haos-sbfspot V2-05 revert: host_dbus alone is insufficient.
+host_network: true
+host_dbus: true
+init: false
+
+services:
+  - mqtt:want
+
+map:
+  - share:rw
+
+options:
+  mqtt:
+    host: core-mosquitto
+    port: 1883
+  inverters: []
+  rfcomm_timeout: 15s
+  metrics_addr: "0.0.0.0:9090"
+
+schema:
+  mqtt:
+    host: "str"
+    port: "int(1,65535)?"
+    user: "str?"
+    password: "password?"
+    client_id: "str?"
+    discovery_prefix: "str?"
+    state_prefix: "str?"
+  inverters:
+    - slot: "str"
+      bt_address: "str"
+      password: "password"
+      poll_interval: "str?"
+      model: "str?"
+      firmware: "str?"
+      mis_enabled: "bool?"
+  local_bt_address: "str?"
+  rfcomm_timeout: "str?"
+  metrics_addr: "str?"
