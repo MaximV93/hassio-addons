@@ -96,4 +96,11 @@ rm -f "${TMP}"
 # V5: BT adapter reset after N consecutive hangs (hciconfig down+up)
 /usr/bin/sbfspot/bt-reset.sh "${RC}" || true
 
+# V5+ fixture capture: mirror daily log to /share/sbfspot-logs so SSH addon +
+# Samba can read it. Idempotent; cp over existing.
+if [ -d /share ] && [ -w /share ]; then
+    mkdir -p /share/sbfspot-logs 2>/dev/null || true
+    cp -f "${LOG_FILE}" /share/sbfspot-logs/ 2>/dev/null || true
+fi
+
 exit "${RC}"

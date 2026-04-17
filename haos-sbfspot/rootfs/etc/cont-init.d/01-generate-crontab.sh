@@ -46,6 +46,7 @@ opt_or() {
     fi
 }
 
+DEBUG_LEVEL=$(opt_or SBFspotDebug 0)
 POLL_DAY=$(opt_or PollIntervalDay 5)
 POLL_NIGHT=$(opt_or PollIntervalNight 0)
 DAY_START=$(opt_or DayStart 6)
@@ -74,6 +75,12 @@ if (( DAY_START >= DAY_END )); then
 fi
 
 readonly SBF=/usr/bin/sbfspot/SBFspot
+# V5+ fixture capture: -debug=N emits hexdumps for protocol reverse-engineering
+if (( DEBUG_LEVEL > 0 )); then
+    SBF_DBG="-debug=${DEBUG_LEVEL}"
+else
+    SBF_DBG=""
+fi
 readonly UPLOAD_DAEMON=/usr/bin/sbfspot/SBFspotUploadDaemon
 readonly UPLOAD_CFG=/usr/bin/sbfspot/SBFspotUpload.cfg
 
@@ -124,7 +131,7 @@ fi
     echo "* * * * *   /usr/bin/sbfspot/publish-heartbeat.sh"
     echo ""
     echo "# One-shot publish on container boot (ad0 = today only)"
-    echo "@reboot sleep 30 && ${RUN_WRAPPER} reboot timeout -s KILL ${SBF_TIMEOUT} ${SBF} -v -ad0 -am0 -mqtt -finq"
+    echo "@reboot sleep 30 && ${RUN_WRAPPER} reboot timeout -s KILL ${SBF_TIMEOUT} ${SBF} ${SBF_DBG} -v -ad0 -am0 -mqtt -finq"
     echo ""
     # V4: when PollIntervalSec is active, the sbfspot-poller s6 service runs the
     # day/night loop in-process. Skip the cron entries to avoid double-polling.
@@ -133,20 +140,20 @@ fi
         echo "# active; see services.d/sbfspot-poller/run."
     else
         echo "# Daytime polling: every ${POLL_DAY} min, hours ${DAY_HOURS}, timeout ${SBF_TIMEOUT}s"
-        echo "*/${POLL_DAY} ${DAY_HOURS} * * *    ${RUN_WRAPPER} day timeout -s KILL ${SBF_TIMEOUT} ${SBF} -v -ad1 -am0 -ae0 -mqtt"
+        echo "*/${POLL_DAY} ${DAY_HOURS} * * *    ${RUN_WRAPPER} day timeout -s KILL ${SBF_TIMEOUT} ${SBF} ${SBF_DBG} -v -ad1 -am0 -ae0 -mqtt"
 
         if (( POLL_NIGHT > 0 )) && [[ -n "${NIGHT_HOURS}" ]]; then
             echo ""
             echo "# Nighttime polling: every ${POLL_NIGHT} min, hours ${NIGHT_HOURS}"
             NIGHT_TIMEOUT=$(( POLL_NIGHT * 60 - 10 ))
             (( NIGHT_TIMEOUT < 30 )) && NIGHT_TIMEOUT=30
-            echo "*/${POLL_NIGHT} ${NIGHT_HOURS} * * *   ${RUN_WRAPPER} night timeout -s KILL ${NIGHT_TIMEOUT} ${SBF} -v -ad0 -am0 -mqtt"
+            echo "*/${POLL_NIGHT} ${NIGHT_HOURS} * * *   ${RUN_WRAPPER} night timeout -s KILL ${NIGHT_TIMEOUT} ${SBF} ${SBF_DBG} -v -ad0 -am0 -mqtt"
         fi
     fi
 
     echo ""
     echo "# Daily archive poll at 05:55 (14-day catch-up, 5-min hard cap)"
-    echo "55 05 * * *   ${RUN_WRAPPER} archive timeout -s KILL 300 ${SBF} -v -sp0 -ad14 -am1 -ae1 -mqtt -finq"
+    echo "55 05 * * *   ${RUN_WRAPPER} archive timeout -s KILL 300 ${SBF} ${SBF_DBG} -v -sp0 -ad14 -am1 -ae1 -mqtt -finq"
 
     if [[ "${ENABLE_UPLOAD,,}" == "true" ]]; then
         echo ""

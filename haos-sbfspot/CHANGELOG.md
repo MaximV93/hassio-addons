@@ -2,6 +2,18 @@
 
 # ![Version](https://img.shields.io/badge/dynamic/yaml?label=Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2FMaximV93%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
 
+## 2026.4.17.19 — fixture capture support
+
+- New option `SBFspotDebug: int(0,5)` (default 0). When >0, cron generates
+  SBFspot invocations with `-debug=N` enabled, producing hex dumps of every
+  BT frame that flows in + out.
+- `run-sbfspot.sh` now mirrors its daily `/data/logs/sbfspot-*.log` into
+  `/share/sbfspot-logs/` at the end of each run so the SSH addon (which has
+  `/share` mounted) can read them. Requires the addon's existing
+  `map: - share:rw` mount (which we already have).
+- Purpose: reverse-engineer the SMA BT protocol for the `hass-sma-rs` Rust
+  rewrite. Reset `SBFspotDebug` to 0 for normal operation.
+
 ## 2026.4.17.18 — daemon-mode polling by default
 
 ### Breaking default change
