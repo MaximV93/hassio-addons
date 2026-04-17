@@ -40,6 +40,16 @@ rm -f "${RC_FILE}"
 END_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 DURATION=$(( $(date +%s) - START_EPOCH ))
 
+# V2-01: loud banner when run was killed by our timeout (exit 137 = SIGKILL from
+# `timeout -s KILL`). Common cause: SBFspot hangs mid-session on marginal BT,
+# or MIS-mode repeater read stalls for minutes. Workaround options:
+#   - raise SBFspotTimeoutSec addon option
+#   - lower BTConnectRetries (addon has it exposed, default 10, try 3)
+#   - if consistent, place BT repeater closer to the marginal inverter
+if [ "${RC}" = "137" ] || [ "${RC}" = "124" ]; then
+    echo "=== [${END_TS}] ${KIND} HANG: killed after ${DURATION}s (exit ${RC})" | tee -a "${LOG_FILE}"
+fi
+
 # Atomic status.json update via jq merge
 TMP=$(mktemp)
 if [ -f "${STATUS}" ]; then
@@ -59,7 +69,12 @@ jq --arg kind "${KIND}" \
         last_run_duration_sec: ($dur | tonumber),
     } + (
         if ($rc | tonumber) == 0 then {last_success_end: $ts, last_success_kind: $kind}
-        else {last_failure_end: $ts, last_failure_kind: $kind, last_failure_exit: ($rc | tonumber)}
+        elif ($rc | tonumber) == 137 or ($rc | tonumber) == 124 then
+            {last_failure_end: $ts, last_failure_kind: $kind, last_failure_exit: ($rc | tonumber),
+             last_failure_reason: "hang-killed-by-timeout",
+             hang_count: ((.hang_count // 0) + 1)}
+        else {last_failure_end: $ts, last_failure_kind: $kind, last_failure_exit: ($rc | tonumber),
+              last_failure_reason: "sbfspot-error"}
         end
     )' "${TMP}" > "${STATUS}.new" && mv "${STATUS}.new" "${STATUS}"
 rm -f "${TMP}"

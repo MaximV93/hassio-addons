@@ -43,7 +43,7 @@ pub "homeassistant/sensor/sbfspot_cron_heartbeat/config" '{
     }
 }'
 
-# Last run status sensor
+# Last run status sensor (ok | hang | failed-N | missing)
 pub "homeassistant/sensor/sbfspot_last_status/config" '{
     "name": "SBFspot Last Run Status",
     "state_topic": "homeassistant/sbfspot/last_status",
@@ -58,4 +58,37 @@ pub "homeassistant/sensor/sbfspot_last_status/config" '{
     }
 }'
 
-bashio::log.info "V2-02 heartbeat: MQTT discovery published for cron_heartbeat + last_status"
+# V2-01: hang counter (total SIGKILL events from timeout wrapper)
+pub "homeassistant/sensor/sbfspot_hang_count/config" '{
+    "name": "SBFspot Hang Count",
+    "state_topic": "homeassistant/sbfspot/hang_count",
+    "unique_id": "sbfspot_hang_count",
+    "entity_category": "diagnostic",
+    "state_class": "total_increasing",
+    "icon": "mdi:alert-octagram-outline",
+    "device": {
+        "identifiers": ["sbfspot_addon"],
+        "name": "HAOS-SBFspot (powerslider)",
+        "manufacturer": "powerslider fork",
+        "model": "haos-sbfspot"
+    }
+}'
+
+# Last run duration (in seconds)
+pub "homeassistant/sensor/sbfspot_last_duration/config" '{
+    "name": "SBFspot Last Run Duration",
+    "state_topic": "homeassistant/sbfspot/last_duration",
+    "unique_id": "sbfspot_last_duration",
+    "entity_category": "diagnostic",
+    "unit_of_measurement": "s",
+    "state_class": "measurement",
+    "icon": "mdi:timer-outline",
+    "device": {
+        "identifiers": ["sbfspot_addon"],
+        "name": "HAOS-SBFspot (powerslider)",
+        "manufacturer": "powerslider fork",
+        "model": "haos-sbfspot"
+    }
+}'
+
+bashio::log.info "V2-02 heartbeat: MQTT discovery published (cron_heartbeat, last_status, hang_count, last_duration)"

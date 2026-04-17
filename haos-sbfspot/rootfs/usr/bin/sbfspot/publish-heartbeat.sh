@@ -37,15 +37,22 @@ mqtt_pub() {
 # Heartbeat value: current UTC timestamp
 mqtt_pub "homeassistant/sbfspot/cron_heartbeat" "${NOW}"
 
-# Status value: from status.json if available
+# Status values: from status.json if available
 if [ -f "${STATUS}" ] && command -v jq >/dev/null 2>&1; then
     STATUS_VALUE=$(jq -r '
         if .last_run_exit == null then "missing"
         elif .last_run_exit == 0 then "ok"
+        elif (.last_failure_reason // "") == "hang-killed-by-timeout" then "hang"
         else "failed-\(.last_run_exit)"
         end' "${STATUS}" 2>/dev/null || echo "missing")
+    HANG_COUNT=$(jq -r '.hang_count // 0' "${STATUS}" 2>/dev/null || echo 0)
+    LAST_DURATION=$(jq -r '.last_run_duration_sec // 0' "${STATUS}" 2>/dev/null || echo 0)
 else
     STATUS_VALUE="missing"
+    HANG_COUNT=0
+    LAST_DURATION=0
 fi
 
-mqtt_pub "homeassistant/sbfspot/last_status" "${STATUS_VALUE}"
+mqtt_pub "homeassistant/sbfspot/last_status"     "${STATUS_VALUE}"
+mqtt_pub "homeassistant/sbfspot/hang_count"      "${HANG_COUNT}"
+mqtt_pub "homeassistant/sbfspot/last_duration"   "${LAST_DURATION}"
