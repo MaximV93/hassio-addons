@@ -1,6 +1,6 @@
 ---
 name: HAOS-SBFspot (powerslider)
-version: 2026.4.17.5
+version: 2026.4.17.6
 slug: haos-sbfspot
 description: SBFspot addon — configurable polling + upstream bug fixes
 url: "https://github.com/MaximV93/hassio-addons/tree/main/haos-sbfspot"
@@ -13,7 +13,12 @@ arch:
   - aarch64
   - amd64
 init: false
-host_network: true
+# V2-05: host_network dropped. Addon needs host_dbus for BlueZ D-Bus access
+# (BT stack), but NOT host-level network namespace — MQTT is reached via
+# supervisor's internal docker network (core-mosquitto.local.hass.io).
+# Rationale: smaller blast radius if addon is ever compromised. If DNS or
+# MQTT breaks after this change, revert by setting host_network: true again.
+host_network: false
 host_dbus: true
 homeassistant_api: true
 panel_icon: mdi:solar-power-variant
