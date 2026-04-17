@@ -2,15 +2,26 @@
 name: CI
 
 # yamllint disable-line rule:true
+# powerslider fork: while actively reverse-engineering hass-sma-rs we push
+# many version bumps to this repo. The lint jobs in this workflow run on the
+# WHOLE repo (shellcheck / yamllint / hadolint hit pre-existing files in
+# haos-sbfspot that have known cosmetic lint issues). Every hass-sma-rs bump
+# was triggering CI → failing → emailing Maxim. `paths-ignore` skips CI for
+# iteration pushes that only touch hass-sma-rs; Builder still runs because
+# Builder's on-push trigger has no path filter.
 on:
   push:
     branches:
       - dev
       - main
+    paths-ignore:
+      - "hass-sma-rs/**"
   pull_request:
     branches:
       - dev
       - main
+    paths-ignore:
+      - "hass-sma-rs/**"
   workflow_call:
     inputs:
       slug:
