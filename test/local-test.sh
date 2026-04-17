@@ -136,20 +136,20 @@ run_smoke() {
   # Fixture-specific crontab assertions (our cont-init.d is jq-direct and works)
   case "$name" in
     options.default)
-      assert_match 'flock -n /run/sbfspot.lock'
+      assert_match 'timeout -s KILL 50'            # PollIntervalDay=1 → 60-10=50s
       assert_match '\*/1 6-22 \* \* \*'
       assert_match '\*/15 23-23,0-5 \* \* \*'
       assert_match 'SBFspotUploadDaemon'           # upload enabled
       ;;
     options.minimal)
-      assert_match 'flock -n /run/sbfspot.lock'
-      assert_match '\*/5 6-22'                     # defaults
-      assert_no_match 'Nighttime polling'          # no PollIntervalNight
+      assert_match 'timeout -s KILL 290'           # default PollIntervalDay=5 → 300-10=290s
+      assert_match '\*/5 6-22'
+      assert_no_match 'Nighttime polling'
       ;;
     options.night-off)
       assert_match '\*/5 6-22'
       assert_no_match 'Nighttime polling'
-      assert_no_match 'SBFspotUploadDaemon'        # EnableUpload=false
+      assert_no_match 'SBFspotUploadDaemon'
       ;;
   esac
   green "  smoke $name OK"
