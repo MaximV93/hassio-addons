@@ -2,6 +2,22 @@
 
 # ![Version](https://img.shields.io/badge/dynamic/yaml?label=Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2FMaximV93%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
 
+## 2026.4.17.18 — daemon-mode polling by default
+
+### Breaking default change
+
+- `PollIntervalSec` default **0 → 5**. Fresh installs + users who never set
+  this option will switch from cron polling (5 min) to daemon polling (5 s).
+  BT saturation is handled gracefully by the daemon (logs drift once,
+  continues without sleep). To keep cron path, set `PollIntervalSec: 0`
+  explicitly. Also available: `PollIntervalDay` / `PollIntervalNight` remain
+  in schema, only consulted when `PollIntervalSec == 0`.
+
+Rationale: the whole point of building the daemon was sub-minute polling.
+Leaving it off-by-default after the infrastructure is proven makes the cron
+path the happy path — wrong for our use case. Users on underpowered BT
+hardware can still opt back.
+
 ## 2026.4.17.17 — BT adapter health monitoring
 
 ### Feature
