@@ -25,13 +25,26 @@ bashio::log.info
 
 #set -x
 
+# powerslider fork V2-09: Sensors_HA is a one-shot on Create. Upstream re-
+# publishes discovery on every restart which spams MQTT retained msgs and
+# creates orphans. After the first successful Create run we drop a flag file;
+# subsequent restarts skip. Sensors_HA=Purge clears the flag so a future
+# Create re-runs.
+readonly SENSORS_PUBLISHED_FLAG=/data/.sensors_published
 var="$(jq --raw-output '.Sensors_HA' $CONFIG_PATH)"
 if bashio::var.equals "${var}" "No"; then
    bashio::log.yellow '|   SKIPPING MQTT SENSOR CREATION   |'
 
 elif bashio::var.equals "${var}" "Create"; then
-     bashio::log.magenta '|   INITIALISE MQTT SENSOR CREATION   |'
-     /usr/bin/sbfspot/mqttSensorConfig
+     if [[ -f "${SENSORS_PUBLISHED_FLAG}" ]]; then
+         bashio::log.yellow '|   SENSORS ALREADY PUBLISHED — SKIPPING   |'
+         bashio::log.yellow '|   Set Sensors_HA=Purge to re-run           |'
+     else
+         bashio::log.magenta '|   INITIALISE MQTT SENSOR CREATION   |'
+         /usr/bin/sbfspot/mqttSensorConfig
+         date -u +%Y-%m-%dT%H:%M:%SZ > "${SENSORS_PUBLISHED_FLAG}"
+         bashio::log.green "|   Sensor discovery complete — flag written   |"
+     fi
 
 elif bashio::var.equals "$var" "Purge"; then
       bashio::log.red '|    PURGING SENSORS FROM MQTT    |'
@@ -40,6 +53,8 @@ elif bashio::var.equals "$var" "Purge"; then
       bashio::log.red '|     MQTT BROKER RETAINED MSGS   |'
       bashio::log.red '|            STATISTICS           |'
       /usr/bin/sbfspot/purgeSen
+      # V2-09: re-arm the one-shot so next Create will publish again.
+      rm -f "${SENSORS_PUBLISHED_FLAG}"
 else
      bashio::log.cyan '|    No One knows how you got here    |'
      bashio::log.cyan '|     check your option selection     |'
