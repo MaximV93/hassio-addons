@@ -1,6 +1,6 @@
 ---
 name: HAOS-SBFspot (powerslider)
-version: 2026.4.17.15
+version: 2026.4.17.16
 slug: haos-sbfspot
 description: SBFspot addon — configurable polling + upstream bug fixes
 url: "https://github.com/MaximV93/hassio-addons/tree/main/haos-sbfspot"
@@ -75,6 +75,11 @@ options:
   PollIntervalSec: 0
   # V4: night daemon interval when PollIntervalSec is active. 0 = skip nights.
   PollIntervalNightSec: 0
+  # V5: SpotData retention in days. 0 = disabled. Default 90.
+  # Auto-activates only when PollIntervalSec >= 5 (sub-minute polling generates
+  # 10-100x more rows than cron). Explicit override forces activation for cron
+  # installs too.
+  DbRetentionDays: 90
 schema:
   Connection_Type: list(Bluetooth|Ethernet)?
   Sensors_HA: list(No||Create||Purge|)?
@@ -137,3 +142,4 @@ schema:
   SBFspotTimeoutSec: "int(0,600)?"
   PollIntervalSec: "int(0,3600)?"
   PollIntervalNightSec: "int(0,3600)?"
+  DbRetentionDays: "int(0,3650)?"

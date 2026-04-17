@@ -7,10 +7,11 @@
 # to MQTT so HA can trend them.
 #
 # Runs from cron every 15 min. Cheap (grep + wc on at most 7 log files).
-set -u
+set -eu
 
-LOG_DIR=/data/logs
-STATUS=/data/hangs.json
+. /usr/bin/sbfspot/lib/common.sh
+
+STATUS="${HANGS_FILE}"
 
 command -v jq >/dev/null 2>&1 || exit 0
 [ -d "${LOG_DIR}" ] || exit 0

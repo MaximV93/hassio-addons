@@ -42,6 +42,9 @@ run_shellcheck() {
     "$ADDON_DIR/rootfs/etc/services.d/sbfspot-poller/run"
     "$ADDON_DIR/rootfs/etc/services.d/sbfspot-poller/finish"
     "$ADDON_DIR/rootfs/usr/bin/sbfspot/hang-analyzer.sh"
+    "$ADDON_DIR/rootfs/usr/bin/sbfspot/bt-reset.sh"
+    "$ADDON_DIR/rootfs/usr/bin/sbfspot/db-retention.sh"
+    "$ADDON_DIR/rootfs/usr/bin/sbfspot/lib/common.sh"
   )
   local rc=0
   # Strict on our own code
@@ -153,6 +156,7 @@ run_smoke() {
       assert_match 'publish-heartbeat.sh'          # V2-02 heartbeat cron
       assert_match 'run-sbfspot.sh day'            # V2-04 wrapped
       assert_match 'hang-analyzer.sh'              # V4 analyzer cron
+      assert_match 'db-retention.sh'               # V5 retention cron
       ;;
     options.minimal)
       assert_match 'timeout -s KILL 290'           # default PollIntervalDay=5 → 300-10=290s

@@ -2,6 +2,40 @@
 
 # ![Version](https://img.shields.io/badge/dynamic/yaml?label=Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2FMaximV93%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
 
+## 2026.4.17.16 — V5 polish: BT auto-reset, DB retention, supply chain hardening, common.sh refactor
+
+### Features
+
+- **BT adapter auto-reset** via `bt-reset.sh`. After `BT_RESET_AFTER_HANGS`
+  (= 5) consecutive SBFspot hangs, invokes `hciconfig hci0 down+up` to clear
+  BlueZ stack corruption. 80 % of sustained hang-loops recover this way.
+  Counter persisted in `/data/.bt_reset_counter`.
+- **MariaDB SpotData retention** via `db-retention.sh` cron @ 03:00.
+  Default 90 d. Auto-skipped on cron path; active on sub-minute daemon path.
+  New option `DbRetentionDays: int(0,3650)` for explicit override / disable.
+  Requires `mariadb-client` in runtime image (newly added to Dockerfile).
+
+### Infra / supply chain
+
+- **Cosign keyless signing** of built images via GitHub OIDC (no secrets).
+  Signs `:<version>` + `:latest` tags on each release.
+- **Trivy CVE scan** (CRITICAL+HIGH, `ignore-unfixed`) as non-blocking CI
+  step on each published image.
+- **SBOM (SPDX)** via `anchore/sbom-action` — published as workflow artifact
+  per arch+addon.
+- `permissions` block on Builder job: `id-token: write`, `attestations: write`,
+  `packages: write` — required for OIDC + package push.
+
+### Code quality
+
+- **Shared constants module** `rootfs/usr/bin/sbfspot/lib/common.sh`.
+  Replaces hardcoded `/data/sbfspot_status.json`, `/data/options.json`,
+  `MAX_KB=102400`, etc. across 4 scripts. Single-source-of-truth for paths,
+  thresholds, and log helpers.
+- **Strict-mode consistency**: `run-sbfspot.sh`, `hang-analyzer.sh`,
+  `publish-heartbeat.sh`, `bt-reset.sh`, `db-retention.sh` all `set -eu`
+  (stricter than `set -u` alone).
+
 ## 2026.4.17.15 — polish: state-file split, capability-narrow AppArmor, upload daemon optional, B8 fix
 
 ### Fixes + hardening

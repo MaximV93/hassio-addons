@@ -162,6 +162,11 @@ fi
     echo "# V4 hang analyzer: count 'HANG' markers in daily logs → status.json."
     echo "# Runs every 15 min; publish-heartbeat.sh surfaces hangs_24h/hangs_7d."
     echo "*/15 * * * *    /usr/bin/sbfspot/hang-analyzer.sh"
+
+    echo ""
+    echo "# V5 DB retention: nightly SpotData cleanup. Opt-out via DbRetentionDays=0."
+    echo "# Skipped entirely on cron path unless user overrides DbRetentionDays default."
+    echo "0 3 * * *       /usr/bin/sbfspot/db-retention.sh"
 } > /etc/crontabs/root
 
 chmod 600 /etc/crontabs/root

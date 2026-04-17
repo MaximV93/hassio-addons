@@ -70,6 +70,13 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.init.outputs.changed == 'true'
     name: Build ${{ matrix.arch }} ${{ matrix.addon }} add-on
+    # V5 supply chain: id-token for Cosign OIDC, packages write for image push,
+    # attestations for SBOM upload, contents read for checkout.
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
     strategy:
       matrix:
         addon: ${{ fromJson(needs.init.outputs.changed_addons) }}
@@ -118,3 +125,42 @@ jobs:
             --image "${{ steps.check.outputs.image }}" \
             --docker-hub "ghcr.io/${{ github.repository_owner }}" \
             --addon
+
+      # powerslider fork V5: supply-chain hardening. Cosign keyless signing
+      # via GitHub OIDC (no secrets to rotate). Trivy CVE scan + SBOM in SPDX
+      # format. Runs only on push (not --test builds).
+      - name: Install Cosign
+        if: env.BUILD_ARGS != '--test' && steps.check.outputs.build_arch == 'true'
+        uses: sigstore/cosign-installer@v3.7.0
+
+      - name: Sign image with Cosign
+        if: env.BUILD_ARGS != '--test' && steps.check.outputs.build_arch == 'true'
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: |
+          VERSION=$(grep -E '^version:' ./${{ matrix.addon }}/config.yaml | awk '{print $2}')
+          IMAGE="ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-addon-$(basename ${{ matrix.addon }})"
+          for TAG in "${VERSION}" "latest"; do
+            cosign sign --yes "${IMAGE}:${TAG}" || echo "Cosign sign of ${IMAGE}:${TAG} failed (non-blocking)"
+          done
+
+      - name: Trivy CVE scan
+        if: env.BUILD_ARGS != '--test' && steps.check.outputs.build_arch == 'true'
+        uses: aquasecurity/trivy-action@0.28.0
+        continue-on-error: true
+        with:
+          image-ref: "ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-addon-$(basename ${{ matrix.addon }}):latest"
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "0"
+          ignore-unfixed: true
+
+      - name: Generate SBOM (SPDX)
+        if: env.BUILD_ARGS != '--test' && steps.check.outputs.build_arch == 'true'
+        uses: anchore/sbom-action@v0.18.0
+        continue-on-error: true
+        with:
+          image: "ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-addon-$(basename ${{ matrix.addon }}):latest"
+          format: spdx-json
+          output-file: "sbom-${{ matrix.arch }}-${{ matrix.addon }}.spdx.json"
+          upload-artifact: true

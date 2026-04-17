@@ -9,14 +9,16 @@
 #       SBFspot is hanging or failing silently.
 #   - sensor.sbfspot_last_status (string: ok|failed-<exit>|missing)
 #     → reflects the last run-sbfspot.sh exit code via /data/sbfspot_status.json
-set -u
+set -eu
 
-STATUS=/data/sbfspot_status.json
-HANGS=/data/hangs.json
-MQTT_HOST=$(jq -r '.MQTT_Host // "core-mosquitto"' /data/options.json)
-MQTT_PORT=$(jq -r '.MQTT_Port // "1883"' /data/options.json)
-MQTT_USER=$(jq -r '.MQTT_User // ""' /data/options.json)
-MQTT_PASS=$(jq -r '.MQTT_Pass // ""' /data/options.json)
+. /usr/bin/sbfspot/lib/common.sh
+
+STATUS="${STATUS_FILE}"
+HANGS="${HANGS_FILE}"
+MQTT_HOST=$(jq -r '.MQTT_Host // "core-mosquitto"' "${OPTIONS_FILE}")
+MQTT_PORT=$(jq -r '.MQTT_Port // "1883"' "${OPTIONS_FILE}")
+MQTT_USER=$(jq -r '.MQTT_User // ""' "${OPTIONS_FILE}")
+MQTT_PASS=$(jq -r '.MQTT_Pass // ""' "${OPTIONS_FILE}")
 
 if [ -z "${MQTT_USER}" ] || [ -z "${MQTT_PASS}" ]; then
     # No MQTT creds — silently skip. Addon may still be in setup phase.

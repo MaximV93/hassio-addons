@@ -1,20 +1,22 @@
 #!/bin/sh
-# powerslider fork V2-04 + V2-02: wrapper for cron SBFspot invocations.
+# powerslider fork V2-04 + V2-02 + V5: wrapper for cron SBFspot invocations.
 # - Duplicates output to both stdout (supervisor log, 100-line cap) and a
-#   daily rotating file in /data/logs/ (persistent, 7-day retention).
+#   daily rotating file in /data/logs/ (persistent, 7-day retention + 100 MB).
 # - Writes success/failure marker to /data/sbfspot_status.json for the
 #   heartbeat publisher (V2-02) to surface via MQTT.
+# - V5: triggers bt-reset.sh after BT_RESET_AFTER_HANGS consecutive hangs.
 #
 # Usage: run-sbfspot.sh <run-kind> <cmd...>
-#   run-kind: short label (reboot|day|night|archive|discovery)
+#   run-kind: short label (reboot|day|night|archive|discovery|daemon-day|...)
 #   cmd:      SBFspot invocation (timeout ... SBFspot ...)
-set -u
+set -eu
+
+. /usr/bin/sbfspot/lib/common.sh
 
 KIND=${1:-unknown}
 shift || true
 
-LOG_DIR=/data/logs
-STATUS=/data/sbfspot_status.json
+STATUS="${STATUS_FILE}"
 DATE=$(date +%Y-%m-%d)
 LOG_FILE="${LOG_DIR}/sbfspot-${DATE}.log"
 
@@ -23,13 +25,12 @@ mkdir -p "${LOG_DIR}"
 find "${LOG_DIR}" -maxdepth 1 -type f -name 'sbfspot-*.log' -mtime +7 -delete 2>/dev/null || true
 
 # V4 size-cap: at sub-minute polling the daily log grows fast (>10 MB/day).
-# If total > 100 MB, delete the oldest until we're under. Belt-and-braces
+# If total > LOG_MAX_KB, delete the oldest until we're under. Belt-and-braces
 # safety net; 7-day time rotation is primary, this catches unexpected growth.
-MAX_KB=102400
 while :; do
     total_kb=$(du -sk "${LOG_DIR}" 2>/dev/null | awk '{print $1}')
     [ -z "${total_kb}" ] && break
-    [ "${total_kb}" -le "${MAX_KB}" ] && break
+    [ "${total_kb}" -le "${LOG_MAX_KB}" ] && break
     oldest=$(find "${LOG_DIR}" -maxdepth 1 -type f -name 'sbfspot-*.log' -printf '%T@ %p\n' 2>/dev/null | sort -n | head -1 | awk '{print $2}')
     [ -z "${oldest}" ] && break
     rm -f "${oldest}" || break
@@ -91,5 +92,8 @@ jq --arg kind "${KIND}" \
         end
     )' "${TMP}" > "${STATUS}.new" && mv "${STATUS}.new" "${STATUS}"
 rm -f "${TMP}"
+
+# V5: BT adapter reset after N consecutive hangs (hciconfig down+up)
+/usr/bin/sbfspot/bt-reset.sh "${RC}" || true
 
 exit "${RC}"

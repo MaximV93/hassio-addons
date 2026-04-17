@@ -65,6 +65,7 @@ RUN apk update && apk add --no-cache \
     bluez-libs=5.79-r0 \
     nano=8.2-r0 \
     libstdc++=14.2.0-r4 \
+    mariadb-client=11.4.8-r0 \
     mariadb-common=11.4.8-r0 \
     mariadb-connector-c=3.3.10-r0 \
     ncurses-libs=6.5_p20241006-r3 \
@@ -93,7 +94,7 @@ COPY --from=builder-base /tmp/SBFspot/TagList* /usr/bin/sbfspot/
 
 COPY rootfs /
 
-RUN chmod a+x /etc/services.d/sbfspot/** /etc/services.d/sbfspot-poller/** /etc/cont-init.d/** /usr/bin/sbfspot/**
+RUN chmod a+x /etc/services.d/sbfspot/** /etc/services.d/sbfspot-poller/** /etc/cont-init.d/** /usr/bin/sbfspot/*.sh /usr/bin/sbfspot/lib/*.sh
 
 # powerslider fork: crontab is generated at runtime by
 # /etc/cont-init.d/01-generate-crontab.sh from addon options
