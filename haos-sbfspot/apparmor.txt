@@ -13,8 +13,29 @@
 profile haos-sbfspot flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
 
-  # Capabilities — see hardening note above. NOT narrowed yet.
-  capability,
+  # V4+.15 capabilities — narrowed from wildcard. If BT breaks silently
+  # (bthConnect() returned -1), the `last_status != ok` alert fires in 15 min
+  # and we revert via apparmor profile update + addon rebuild.
+  #
+  # Rationale for each:
+  #   net_raw        — AF_BLUETOOTH raw sockets for BlueZ
+  #   net_admin      — BlueZ management socket
+  #   net_bind_service — low-port binds (belt & braces; probably unneeded)
+  #   dac_override   — read /usr/bin/sbfspot/SBFspot.cfg (root-owned by us)
+  #   chown, fowner  — s6 init + cont-init.d chmod calls
+  #   setuid, setgid — bashio/s6 init user switches
+  #   sys_nice       — cron nice-level adjustments
+  #   kill           — signal handling (timeout -s KILL)
+  capability net_raw,
+  capability net_admin,
+  capability net_bind_service,
+  capability dac_override,
+  capability chown,
+  capability fowner,
+  capability setuid,
+  capability setgid,
+  capability sys_nice,
+  capability kill,
   file,
   signal (send) set=(kill,term,int,hup,cont),
 

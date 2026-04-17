@@ -14,6 +14,7 @@ MQTT_Data="$(bashio::config 'MQTT_Data')"
 #  arg="$(jq --raw-output '.MQTT_Data' /data/options.json | tr ',' '\n')"
 
 ts="$(bashio::config 'DateTimeFormat' '%H:%M:%S %d/%m/%Y')"
+   : \"${ts:='%H:%M:%S %d/%m/%Y'}\"  # B8 fork: guard against empty-string return
 
 bashio::log.magenta "$PLANTNAME"
 bashio::log.red "${MQTT_Host}"
@@ -189,7 +190,8 @@ value='InvTime'
    UoM=
    EnabDef='true' 
    ent_cat='diagnostic'
-   ts="$(bashio::config 'DateTimeFormat')"
+   ts="$(bashio::config 'DateTimeFormat' '%H:%M:%S %d/%m/%Y')"
+   : \"${ts:='%H:%M:%S %d/%m/%Y'}\"  # B8 fork: guard against empty-string return
    
    bashio::log.info Setting Up "$value"
    
@@ -208,7 +210,8 @@ value='SunRise'
    UoM=
    EnabDef='true'
    ent_cat=
-   ts="$(bashio::config 'DateTimeFormat')"
+   ts="$(bashio::config 'DateTimeFormat' '%H:%M:%S %d/%m/%Y')"
+   : \"${ts:='%H:%M:%S %d/%m/%Y'}\"  # B8 fork: guard against empty-string return
    
    bashio::log.info Setting Up "$value"
    
@@ -227,7 +230,8 @@ value='SunSet'
    UoM=
    EnabDef='true' 
    ent_cat=
-   ts="$(bashio::config 'DateTimeFormat')"
+   ts="$(bashio::config 'DateTimeFormat' '%H:%M:%S %d/%m/%Y')"
+   : \"${ts:='%H:%M:%S %d/%m/%Y'}\"  # B8 fork: guard against empty-string return
    
    bashio::log.info Setting Up "$value"
    
@@ -919,7 +923,8 @@ if [[ " ${array[*]} " =~ " $value " ]]; then
    UoM=
    EnabDef='true' 
    ent_cat=
-   ts="$(bashio::config 'DateTimeFormat')"
+   ts="$(bashio::config 'DateTimeFormat' '%H:%M:%S %d/%m/%Y')"
+   : \"${ts:='%H:%M:%S %d/%m/%Y'}\"  # B8 fork: guard against empty-string return
    
    bashio::log.info Setting Up "$value"
    
@@ -938,7 +943,8 @@ if [[ " ${array[*]} " =~ " $value " ]]; then
    UoM=
    EnabDef='true' 
    ent_cat=
-   ts="$(bashio::config 'DateTimeFormat')"
+   ts="$(bashio::config 'DateTimeFormat' '%H:%M:%S %d/%m/%Y')"
+   : \"${ts:='%H:%M:%S %d/%m/%Y'}\"  # B8 fork: guard against empty-string return
    
    bashio::log.info Setting Up "$value"
    

@@ -12,6 +12,7 @@
 set -u
 
 STATUS=/data/sbfspot_status.json
+HANGS=/data/hangs.json
 MQTT_HOST=$(jq -r '.MQTT_Host // "core-mosquitto"' /data/options.json)
 MQTT_PORT=$(jq -r '.MQTT_Port // "1883"' /data/options.json)
 MQTT_USER=$(jq -r '.MQTT_User // ""' /data/options.json)
@@ -47,12 +48,18 @@ if [ -f "${STATUS}" ] && command -v jq >/dev/null 2>&1; then
         end' "${STATUS}" 2>/dev/null || echo "missing")
     HANG_COUNT=$(jq -r '.hang_count // 0' "${STATUS}" 2>/dev/null || echo 0)
     LAST_DURATION=$(jq -r '.last_run_duration_sec // 0' "${STATUS}" 2>/dev/null || echo 0)
-    HANGS_24H=$(jq -r '.hangs_24h // 0' "${STATUS}" 2>/dev/null || echo 0)
-    HANGS_7D=$(jq -r '.hangs_7d // 0' "${STATUS}" 2>/dev/null || echo 0)
 else
     STATUS_VALUE="missing"
     HANG_COUNT=0
     LAST_DURATION=0
+fi
+
+# V4 polish: hangs_24h/7d come from the hang-analyzer's own state file
+# (separate writer → no race with run-sbfspot.sh on status.json).
+if [ -f "${HANGS}" ] && command -v jq >/dev/null 2>&1; then
+    HANGS_24H=$(jq -r '.hangs_24h // 0' "${HANGS}" 2>/dev/null || echo 0)
+    HANGS_7D=$(jq -r '.hangs_7d // 0' "${HANGS}" 2>/dev/null || echo 0)
+else
     HANGS_24H=0
     HANGS_7D=0
 fi

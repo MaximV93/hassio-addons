@@ -7,6 +7,10 @@ ARG TEMPIO_VERSION BUILD_ARCH
 # powerslider fork: pin SBFspot to a released tag (B4). Upstream had no pin;
 # every rebuild pulled whatever was on master. Override via --build-arg.
 ARG SBFSPOT_VERSION=V3.9.12
+# V4 polish: optionally skip SBFspotUploadDaemon build. Default keeps upstream
+# behaviour (built + shipped). Set to false to save ~3 MB image + reduce
+# attack surface when EnableUpload is never going to be true.
+ARG BUILD_UPLOAD_DAEMON=true
 RUN \
     curl -sSLf -o /usr/bin/tempio \
     "https://github.com/home-assistant/tempio/releases/download/${TEMPIO_VERSION}/tempio_${BUILD_ARCH}"
@@ -35,8 +39,14 @@ RUN \
     git clone --depth 1 --branch "${SBFSPOT_VERSION}" https://github.com/sbfspot/SBFspot.git . \
     && sed -i s/mariadbclient/mariadb/ ./SBFspot/makefile \
     && make -C ./SBFspot mariadb \
-    && sed -i s/mariadbclient/mariadb/ ./SBFspotUploadDaemon/makefile \
-    && make -C ./SBFspotUploadDaemon mariadb
+    && if [ "${BUILD_UPLOAD_DAEMON}" = "true" ]; then \
+           sed -i s/mariadbclient/mariadb/ ./SBFspotUploadDaemon/makefile \
+           && make -C ./SBFspotUploadDaemon mariadb ; \
+       else \
+           echo "V4: SBFspotUploadDaemon build skipped (BUILD_UPLOAD_DAEMON=false)" ; \
+           mkdir -p /tmp/SBFspotUploadDaemon/mariadb/bin ; \
+           : > /tmp/SBFspotUploadDaemon/mariadb/bin/SBFspotUploadDaemon ; \
+       fi
 
 
 # runtinme container   

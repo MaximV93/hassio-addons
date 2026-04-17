@@ -2,6 +2,34 @@
 
 # ![Version](https://img.shields.io/badge/dynamic/yaml?label=Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2FMaximV93%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
 
+## 2026.4.17.15 — polish: state-file split, capability-narrow AppArmor, upload daemon optional, B8 fix
+
+### Fixes + hardening
+
+- **State-file write race closed**: `hang-analyzer.sh` now writes to
+  `/data/hangs.json` (separate from `sbfspot_status.json`). `publish-heartbeat.sh`
+  reads both. Previously both writers could overwrite each other when cron
+  analyzer + run-sbfspot fired within ~1 s.
+- **AppArmor capabilities narrowed** from wildcard `capability,` to an
+  explicit list: `net_raw, net_admin, net_bind_service, dac_override, chown,
+  fowner, setuid, setgid, sys_nice, kill`. If BT breaks, `last_status != ok`
+  alert fires in 15 min; revert path is apparmor.txt + rebuild.
+- **B8 upstream fix**: `mqttSensorConfig` had 5 occurrences of
+  `ts="$(bashio::config 'DateTimeFormat')"` without a default. When user had
+  empty `DateTimeFormat`, the generated MQTT discovery template became
+  `timestamp_custom( )` — parse-failed + `ValueError` flood on every poll.
+  All 5 now pass `'%H:%M:%S %d/%m/%Y'` as bashio default + add shell
+  fallback `: "${ts:='...'}"` in case bashio returns empty string.
+
+### Features
+
+- **`BUILD_UPLOAD_DAEMON` Docker ARG** (default `true` = upstream behaviour).
+  Set to `false` to skip the SBFspotUploadDaemon build entirely — saves
+  ~3 MB image, reduces attack surface when `EnableUpload` is never true.
+- **Options-migration foundation**: new `cont-init.d/00-version-stamp.sh`
+  records the running version in `/data/.addon_version`. Hook point for
+  future option-schema migrations. Idempotent, no-op today.
+
 ## 2026.4.17.14 — sub-minute polling + hang analyzer + AppArmor narrowing + cleanup
 
 ### Features
