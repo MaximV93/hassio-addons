@@ -117,6 +117,33 @@ Your data in MariaDB (`sbfspot` database) stays intact — both addons use the s
 
 MQTT discovery entities from the powerslider fork (`sensor.haos_sbfspot_powerslider_*`) become orphaned; HA removes them after 3 hours without updates.
 
+## MQTT broker state wipe recovery
+
+**Symptom**: after a `mosquitto` reinstall or retained-state loss, the 37
+per-inverter sensors (`sensor.haos_sbfspot_*_sma_ac_power` etc.) go to
+`unavailable` and stay there. Our fork's 6 heartbeat sensors recover
+automatically (cont-init.d republishes every start).
+
+**Cause**: the per-inverter discovery configs were published by the upstream
+`haos-sbfspot-sensorsgen` addon. Our fork owns only the heartbeat sensors.
+If the broker loses retained state, the sensorsgen-owned configs are gone.
+
+**Recovery**:
+1. Install upstream `habuild/hassio-addons-sensorsgen` (it's the one-shot
+   generator, can be uninstalled again after).
+2. Run it once with `Sensors_HA=Create` per inverter. Discovery gets
+   re-published.
+3. Uninstall sensorsgen.
+
+Alternative (advanced): invoke our fork's bundled `/usr/bin/sbfspot/mqttSensorConfig`
+directly per inverter. Requires `/data/device` JSON file with correct serial,
+which SBFspot writes on first successful connect. See ADR-003 note on
+discovery ownership split.
+
+**Backlog item**: own all per-inverter discovery configs in our fork — see
+`haos-sbfspot-v5` in Plane. Deferred because mqttSensorConfig needs per-inverter
+invocation (multi-inverter systems write one `/data/device` per serial).
+
 ## Reporting issues
 
 - **Fork-specific**: https://github.com/MaximV93/hassio-addons/issues
