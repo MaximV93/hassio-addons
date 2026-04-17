@@ -47,7 +47,11 @@ run_shellcheck() {
     [[ " ${own[*]} " == *" $s "* ]] && continue
     shellcheck --shell=bash --severity=error --exclude=SC1091,SC2155,SC2086,SC2046 "$s" || rc=1
   done
-  [[ $rc -eq 0 ]] && green "  shellcheck OK" || fail "shellcheck failed"
+  if [[ $rc -eq 0 ]]; then
+    green "  shellcheck OK"
+  else
+    fail "shellcheck failed"
+  fi
 }
 
 # ---- 2. hadolint ----
@@ -159,7 +163,6 @@ run_smoke() {
 }
 
 main() {
-  local start=$SECONDS
   run_shellcheck
   run_hadolint
   run_yamllint

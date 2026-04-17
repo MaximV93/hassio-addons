@@ -1,0 +1,106 @@
+---
+configuration:
+  Connection_Type:
+    name: Verbindingstype
+    description: >-
+      Bluetooth of Ethernet. Enkel de bijbehorende opties worden naar
+      SBFspot.cfg geschreven.
+  Sensors_HA:
+    name: MQTT sensors aanmaken of opruimen
+    description: >-
+      Laat op "No" staan tot MQTT werkt. "Create" publiceert MQTT discovery
+      configs; "Purge" haalt ze weg + reset de one-shot flag (V2-09).
+  BTAddress:
+    name: Bluetooth MAC van de inverter
+    description: >-
+      Bluetooth MAC-adres van je SMA inverter. Voor MIS (meerdere inverters)
+      gescheiden door komma's.
+  Password:
+    name: Inverter wachtwoord
+    description: >-
+      User-rol wachtwoord van de inverter. Default bij SMA is 0000 — door de
+      installateur vaak gewijzigd.
+  LocalBTAddress:
+    name: BT MAC van de host (optioneel)
+    description: >-
+      Bluetooth MAC van je USB-dongle/repeater. Leeg laten = SBFspot kiest
+      automatisch de eerste HCI interface.
+  IP_Address:
+    name: Inverter IP (Ethernet mode)
+    description: >-
+      IP of hostname van de inverter. Komma-separated voor meerdere inverters.
+  Plantname:
+    name: Installatienaam
+    description: >-
+      Gebruikt in MQTT topic + logs. Iets herkenbaars ("SBFspot" of "Solar").
+  MIS_Enabled:
+    name: Multi-Inverter Systems (MIS)
+    description: >-
+      Alleen voor BT met meer dan één inverter op dezelfde NetID. Bool; legacy
+      int 0/1 wordt gecoerced.
+  Latitude:
+    name: Breedtegraad
+    description: Voor sunrise/sunset berekening.
+  Longitude:
+    name: Lengtegraad
+    description: Voor sunrise/sunset berekening.
+  Timezone:
+    name: Tijdzone
+    description: Europe/Brussels voor BE.
+  SQL_Hostname:
+    name: MariaDB host
+    description: >-
+      "core-mariadb" als je de officiële MariaDB addon gebruikt.
+  SQL_Database:
+    name: Database naam
+    description: "Standaard: sbfspot"
+  SQL_Username:
+    name: Database user
+    description: >-
+      User moet bestaan in MariaDB + schema import uitgevoerd (zie README).
+  SQL_Password:
+    name: Database wachtwoord
+    description: ""
+  MQTT_Host:
+    name: MQTT broker host
+    description: >-
+      "core-mosquitto" bij de officiële Mosquitto addon.
+  MQTT_User:
+    name: MQTT user
+    description: Publisher user (dedicated sbfspot user aanbevolen).
+  MQTT_Pass:
+    name: MQTT wachtwoord
+    description: ""
+  MQTT_Topic:
+    name: MQTT topic pattern
+    description: >-
+      homeassistant/sbfspot_{plantname}/sbfspot_{serial} — {plantname} en
+      {serial} worden vervangen.
+  PollIntervalDay:
+    name: Dag poll-interval (minuten)
+    description: >-
+      1-30 min. Default 5. Onder 2 min vaak BT contention met 2+ inverters.
+  PollIntervalNight:
+    name: Nacht poll-interval (minuten)
+    description: >-
+      0 = uit, anders 1-60. Bij 0 stopt polling volledig tussen DayEnd en
+      DayStart.
+  DayStart:
+    name: Dag begint om (uur)
+    description: 24h formaat (0-23). Default 6.
+  DayEnd:
+    name: Dag eindigt om (uur)
+    description: 24h formaat (1-23). Default 22.
+  EnableUpload:
+    name: SBFspotUploadDaemon draaien
+    description: >-
+      Standaard aan. Zet uit als je geen PVOutput gebruikt — vermijdt een
+      daemon die toch niks doet.
+  SBFspotTimeoutSec:
+    name: SBFspot timeout (seconden)
+    description: >-
+      0 = auto (PollIntervalDay*60-10). Verhoog bij marginaal BT signaal
+      waar legit runs meer dan die auto-cap nodig hebben.
+  LogLevel:
+    name: Log niveau
+    description: debug / info / warning / error
