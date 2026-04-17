@@ -1,10 +1,9 @@
 ARG BUILD_FROM
 
-# ───── build stage: rust:1-slim gives us modern rustc + tools ─────────────
-FROM rust:1-slim-bookworm AS builder
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        git pkg-config libssl-dev ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+# ───── build stage: rust:alpine compiles against musl to match runtime ────
+# (Debian-based rust:slim produces glibc binaries that don't run on Alpine.)
+FROM rust:1-alpine3.21 AS builder
+RUN apk add --no-cache musl-dev git openssl-dev pkgconfig ca-certificates
 WORKDIR /build
 
 ARG HASS_SMA_RS_REF=master
