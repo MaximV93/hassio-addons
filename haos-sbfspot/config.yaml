@@ -1,6 +1,6 @@
 ---
 name: HAOS-SBFspot (powerslider)
-version: 2026.4.17.8
+version: 2026.4.17.9
 slug: haos-sbfspot
 description: SBFspot addon — configurable polling + upstream bug fixes
 url: "https://github.com/MaximV93/hassio-addons/tree/main/haos-sbfspot"
@@ -13,12 +13,13 @@ arch:
   - aarch64
   - amd64
 init: false
-# V2-05: host_network dropped. Addon needs host_dbus for BlueZ D-Bus access
-# (BT stack), but NOT host-level network namespace — MQTT is reached via
-# supervisor's internal docker network (core-mosquitto.local.hass.io).
-# Rationale: smaller blast radius if addon is ever compromised. If DNS or
-# MQTT breaks after this change, revert by setting host_network: true again.
-host_network: false
+# V2-05 REVERTED in 2026.4.17.9: host_network: false broke BT (`bthConnect()
+# returned -1` on every poll). BlueZ raw BT sockets (AF_BLUETOOTH) bind on
+# hci0 which is in the host network namespace. host_dbus: true alone
+# gives D-Bus access (for management APIs) but not raw socket access.
+# Keep host_network: true. Hardening must happen inside the container via
+# capability drops in apparmor profile, not at the netns boundary.
+host_network: true
 host_dbus: true
 homeassistant_api: true
 panel_icon: mdi:solar-power-variant
