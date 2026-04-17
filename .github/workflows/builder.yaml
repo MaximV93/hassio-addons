@@ -131,7 +131,7 @@ jobs:
       # format. Runs only on push (not --test builds).
       - name: Install Cosign
         if: env.BUILD_ARGS != '--test' && steps.check.outputs.build_arch == 'true'
-        uses: sigstore/cosign-installer@v3.7.0
+        uses: sigstore/cosign-installer@v4.1.1
 
       - name: Sign image with Cosign
         if: env.BUILD_ARGS != '--test' && steps.check.outputs.build_arch == 'true'
@@ -146,7 +146,7 @@ jobs:
 
       - name: Trivy CVE scan
         if: env.BUILD_ARGS != '--test' && steps.check.outputs.build_arch == 'true'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.35.0
         continue-on-error: true
         with:
           image-ref: "ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-addon-$(basename ${{ matrix.addon }}):latest"
@@ -157,7 +157,7 @@ jobs:
 
       - name: Generate SBOM (SPDX)
         if: env.BUILD_ARGS != '--test' && steps.check.outputs.build_arch == 'true'
-        uses: anchore/sbom-action@v0.18.0
+        uses: anchore/sbom-action@v0.24.0
         continue-on-error: true
         with:
           image: "ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-addon-$(basename ${{ matrix.addon }}):latest"
