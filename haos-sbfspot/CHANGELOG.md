@@ -2,6 +2,12 @@
 
 # ![Version](https://img.shields.io/badge/dynamic/yaml?label=Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2FMaximV93%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
 
+## 2026.4.17.20 — fixture capture active (temporary SBFspotDebug=5 default)
+
+Intentional default flip for a short capture window: hex dumps are written
+to every daily log + mirrored to `/share/sbfspot-logs/`. Will be reverted
+in .21 after fixtures are collected.
+
 ## 2026.4.17.19 — fixture capture support
 
 - New option `SBFspotDebug: int(0,5)` (default 0). When >0, cron generates
