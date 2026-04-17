@@ -1,6 +1,6 @@
 ---
 name: HAOS-SBFspot (powerslider)
-version: 2026.4.17.22
+version: 2026.4.17.23
 slug: haos-sbfspot
 description: SBFspot addon — configurable polling + BT auto-reset + upstream bug fixes
 url: "https://github.com/MaximV93/hassio-addons/tree/main/haos-sbfspot"
@@ -85,8 +85,7 @@ options:
   # and run-sbfspot.sh mirrors daily logs to /share/sbfspot-logs/. Use 5 for
   # maximum detail during protocol reverse-engineering. Reset to 0 for normal
   # operation (current default).
-  # TEMPORARILY SET TO 5 FOR HEX-DUMP FIXTURE CAPTURE. Reset to 0 in .21.
-  SBFspotDebug: 5
+  SBFspotDebug: 0
 schema:
   Connection_Type: list(Bluetooth|Ethernet)?
   Sensors_HA: list(No||Create||Purge|)?

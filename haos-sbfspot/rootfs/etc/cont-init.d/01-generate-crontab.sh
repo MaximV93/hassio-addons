@@ -46,11 +46,10 @@ opt_or() {
     fi
 }
 
-# V5+ fixture capture HARDCODED to 5 for .22; reverted in .23.
-# opt_or returns 0 when key is absent from options.json (config.yaml default
-# doesn't backfill existing installs), so we bypass the option lookup.
-DEBUG_LEVEL=5
-# DEBUG_LEVEL=$(opt_or SBFspotDebug 0)
+# V5+ fixture capture: option-driven again now that .22 served its purpose.
+# To re-enable capture, flip SBFspotDebug to 1-5 via addon UI (not via the
+# config.yaml default — supervisor doesn't backfill existing options.json).
+DEBUG_LEVEL=$(opt_or SBFspotDebug 0)
 POLL_DAY=$(opt_or PollIntervalDay 5)
 POLL_NIGHT=$(opt_or PollIntervalNight 0)
 DAY_START=$(opt_or DayStart 6)

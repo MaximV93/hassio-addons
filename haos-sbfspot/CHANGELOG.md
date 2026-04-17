@@ -2,6 +2,12 @@
 
 # ![Version](https://img.shields.io/badge/dynamic/yaml?label=Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2FMaximV93%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
 
+## 2026.4.17.23 — fixture capture complete; revert to option-driven
+
+Captures from .22 yielded 290 frames parsed into `hass-sma-rs`. Back to
+option-driven debug level (SBFspotDebug=0 default). Operators wanting to
+recapture set SBFspotDebug to 1-5 via the addon UI.
+
 ## 2026.4.17.22 — fixture capture: HARDCODE DEBUG_LEVEL=5 (not via option)
 
 SBFspotDebug option was invisible to existing installs because config.yaml
