@@ -316,6 +316,10 @@ EOL
 
 #cat $CFG_PATH_UPLOAD
 
+# powerslider fork B3: cfg files contain plaintext DB/MQTT/inverter passwords,
+# lock them down to the addon user only.
+chmod 600 "$CFG_PATH" "$CFG_PATH_UPLOAD"
+
 # create folders
 mkdir -p "$CONFIG_OUTPUTPATH"
 # mkdir -p  ##### "CONFIG_LOGDIR"

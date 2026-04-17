@@ -112,15 +112,19 @@ jobs:
       - name: 🚀 Run YAMLLint
         uses: frenck/action-yamllint@v1.5
 
+  # powerslider fork N3: upstream's Prettier step tries `--write` + auto-commits
+  # back to the repo via GITHUB_TOKEN. In a fork, github-actions[bot] has no
+  # push permission → every run fails. Switch to `--check` (report-only) and
+  # mark non-blocking so CI stays green while still surfacing format drift.
   lint-prettier:
     name: Prettier
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - name: ⤵️ Check out code from GitHub
         uses: actions/checkout@v6.0.2
-      - name: 🚀 Run Prettier
+      - name: 🚀 Run Prettier (check-only)
         uses: creyD/prettier_action@v4.6
         with:
-          prettier_options: --write **/*.{json,js,md,yaml}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          prettier_options: --check **/*.{json,js,md,yaml}
+          dry: true
