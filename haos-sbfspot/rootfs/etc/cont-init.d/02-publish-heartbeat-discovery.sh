@@ -27,6 +27,26 @@ pub() {
         -t "$1" -m "$2" --retain --quiet 2>/dev/null || true
 }
 
+# V3-03 migration (in 2026.4.17.12): HA MQTT discovery tracks entities by
+# unique_id and does not rename existing entities when we add object_id.
+# Publishing an empty payload to the discovery topic tells HA to remove the
+# entity — then re-publishing the config creates a fresh entity respecting
+# object_id. Idempotent on subsequent starts (old entity is already gone).
+#
+# One-time cost: automations/dashboards pointing at old entity_ids will break
+# on first run of 2026.4.17.12+. Documented in CHANGELOG and DOCS.md.
+migrate() {
+    /usr/bin/mosquitto_pub \
+        -h "${MQTT_HOST}" -p "${MQTT_PORT}" \
+        -u "${MQTT_USER}" -P "${MQTT_PASS}" \
+        -t "$1" -m "" --retain --quiet 2>/dev/null || true
+}
+migrate "homeassistant/sensor/sbfspot_cron_heartbeat/config"
+migrate "homeassistant/sensor/sbfspot_last_status/config"
+migrate "homeassistant/sensor/sbfspot_hang_count/config"
+migrate "homeassistant/sensor/sbfspot_last_duration/config"
+sleep 2
+
 # V3-03: adding `object_id` to each discovery config forces HA to use it as
 # entity_id instead of slug'ing device.name + unique_id. Without it, our sensors
 # ended up as `sensor.haos_sbfspot_powerslider_sbfspot_cron_heartbeat`. With it,
