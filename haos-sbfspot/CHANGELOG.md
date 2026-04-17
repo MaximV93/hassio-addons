@@ -2,6 +2,12 @@
 
 # ![Version](https://img.shields.io/badge/dynamic/yaml?label=Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2FMaximV93%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
 
+## 2026.4.17.21 — fixture capture: fix SBFspot debug flag syntax
+
+SBFspot V3.9.12 uses `-d5` (no `=`), not `-debug=5`. .20 failed fast with
+"Invalid argument". Fixed + added `-finq` when debug is enabled so the
+handshake phase runs even at night.
+
 ## 2026.4.17.20 — fixture capture active (temporary SBFspotDebug=5 default)
 
 Intentional default flip for a short capture window: hex dumps are written

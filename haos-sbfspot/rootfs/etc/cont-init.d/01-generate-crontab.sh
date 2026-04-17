@@ -75,9 +75,12 @@ if (( DAY_START >= DAY_END )); then
 fi
 
 readonly SBF=/usr/bin/sbfspot/SBFspot
-# V5+ fixture capture: -debug=N emits hexdumps for protocol reverse-engineering
+# V5+ fixture capture: `-d#` (one letter + digit, no =) sets debug level 0-5.
+# SBFspot V3.9.12 rejects -debug=5 syntax. `-finq` forces the inverter scan
+# even when "it's dark" so hex dumps of the handshake phase are captured at
+# night; spot data returns empty but the protocol exchange is still visible.
 if (( DEBUG_LEVEL > 0 )); then
-    SBF_DBG="-debug=${DEBUG_LEVEL}"
+    SBF_DBG="-d${DEBUG_LEVEL} -finq"
 else
     SBF_DBG=""
 fi
