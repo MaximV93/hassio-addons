@@ -22,6 +22,19 @@ mkdir -p "${LOG_DIR}"
 # Rotate: drop logs older than 7 days (silent if none)
 find "${LOG_DIR}" -maxdepth 1 -type f -name 'sbfspot-*.log' -mtime +7 -delete 2>/dev/null || true
 
+# V4 size-cap: at sub-minute polling the daily log grows fast (>10 MB/day).
+# If total > 100 MB, delete the oldest until we're under. Belt-and-braces
+# safety net; 7-day time rotation is primary, this catches unexpected growth.
+MAX_KB=102400
+while :; do
+    total_kb=$(du -sk "${LOG_DIR}" 2>/dev/null | awk '{print $1}')
+    [ -z "${total_kb}" ] && break
+    [ "${total_kb}" -le "${MAX_KB}" ] && break
+    oldest=$(find "${LOG_DIR}" -maxdepth 1 -type f -name 'sbfspot-*.log' -printf '%T@ %p\n' 2>/dev/null | sort -n | head -1 | awk '{print $2}')
+    [ -z "${oldest}" ] && break
+    rm -f "${oldest}" || break
+done
+
 START_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 START_EPOCH=$(date +%s)
 RC_FILE=$(mktemp)

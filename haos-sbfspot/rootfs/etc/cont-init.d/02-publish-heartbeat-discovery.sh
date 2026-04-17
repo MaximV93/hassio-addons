@@ -107,4 +107,37 @@ pub "homeassistant/sensor/sbfspot_last_duration/config" '{
     }
 }'
 
-bashio::log.info "V2-02 heartbeat: MQTT discovery published (cron_heartbeat, last_status, hang_count, last_duration)"
+# V4 hang-analyzer: 24h + 7d rolling counts from /data/logs/sbfspot-*.log
+pub "homeassistant/sensor/sbfspot_hangs_24h/config" '{
+    "name": "SBFspot Hangs 24h",
+    "object_id": "sbfspot_hangs_24h",
+    "state_topic": "homeassistant/sbfspot/hangs_24h",
+    "unique_id": "sbfspot_hangs_24h",
+    "entity_category": "diagnostic",
+    "state_class": "measurement",
+    "icon": "mdi:alert-decagram",
+    "device": {
+        "identifiers": ["sbfspot_addon"],
+        "name": "HAOS-SBFspot (powerslider)",
+        "manufacturer": "powerslider fork",
+        "model": "haos-sbfspot"
+    }
+}'
+
+pub "homeassistant/sensor/sbfspot_hangs_7d/config" '{
+    "name": "SBFspot Hangs 7d",
+    "object_id": "sbfspot_hangs_7d",
+    "state_topic": "homeassistant/sbfspot/hangs_7d",
+    "unique_id": "sbfspot_hangs_7d",
+    "entity_category": "diagnostic",
+    "state_class": "measurement",
+    "icon": "mdi:alert-decagram-outline",
+    "device": {
+        "identifiers": ["sbfspot_addon"],
+        "name": "HAOS-SBFspot (powerslider)",
+        "manufacturer": "powerslider fork",
+        "model": "haos-sbfspot"
+    }
+}'
+
+bashio::log.info "V2-02+V4 heartbeat: MQTT discovery published (cron_heartbeat, last_status, hang_count, last_duration, hangs_24h, hangs_7d)"

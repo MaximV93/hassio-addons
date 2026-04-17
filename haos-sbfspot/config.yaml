@@ -1,6 +1,6 @@
 ---
 name: HAOS-SBFspot (powerslider)
-version: 2026.4.17.13
+version: 2026.4.17.14
 slug: haos-sbfspot
 description: SBFspot addon — configurable polling + upstream bug fixes
 url: "https://github.com/MaximV93/hassio-addons/tree/main/haos-sbfspot"
@@ -68,6 +68,13 @@ options:
   # V2-03: explicit timeout override (seconds). 0 = auto (PollIntervalDay*60-10).
   # Use when BT signal is marginal and legitimate runs exceed the auto cap.
   SBFspotTimeoutSec: 0
+  # V4: sub-minute daemon polling (bypass cron for intervals below 60s).
+  # 0 = disabled (use PollIntervalDay/Night via cron). >=5 = enable daemon,
+  # skip cron day/night entries, run a tight loop instead. Min 5s = SMA
+  # inverter internal sample rate. See docs/ADR-004.
+  PollIntervalSec: 0
+  # V4: night daemon interval when PollIntervalSec is active. 0 = skip nights.
+  PollIntervalNightSec: 0
 schema:
   Connection_Type: list(Bluetooth|Ethernet)?
   Sensors_HA: list(No||Create||Purge|)?
@@ -128,3 +135,5 @@ schema:
   DayEnd: "int(1,23)?"
   EnableUpload: "bool?"
   SBFspotTimeoutSec: "int(0,600)?"
+  PollIntervalSec: "int(0,3600)?"
+  PollIntervalNightSec: "int(0,3600)?"

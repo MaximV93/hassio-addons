@@ -2,6 +2,42 @@
 
 # ![Version](https://img.shields.io/badge/dynamic/yaml?label=Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2FMaximV93%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
 
+## 2026.4.17.14 — sub-minute polling + hang analyzer + AppArmor narrowing + cleanup
+
+### Features
+
+- **V4 sub-minute polling** via new in-process s6 daemon. New options:
+  - `PollIntervalSec: int(0,3600)` — 0 = disabled (cron path unchanged),
+    >=5 = daemon path. Bypasses cron 1-min floor.
+  - `PollIntervalNightSec: int(0,3600)` — daemon-path night interval.
+  - Full design in `docs/ADR-004-sub-minute-polling.md`.
+- **V4 hang analyzer** — counts `=== HANG ===` markers in
+  `/data/logs/sbfspot-*.log` over rolling 24h + 7d windows. Runs from cron
+  every 15 min, writes to `/data/sbfspot_status.json`. Two new MQTT
+  discovery sensors: `sensor.sbfspot_hangs_24h`, `sensor.sbfspot_hangs_7d`.
+- **Size-capped log rotation** — `/data/logs` now hard-limited to 100 MB,
+  oldest file deleted when exceeded. Complements the 7-day mtime rotation.
+
+### Security
+
+- **AppArmor narrowed**: `network,` (wildcard) replaced by explicit
+  `network bluetooth, network inet stream, network inet dgram, network inet6 stream, network inet6 dgram, network netlink raw, network unix,`.
+  Explicit `deny mount, deny pivot_root, deny capability sys_module, deny @{PROC}/sys/kernel/** w, deny /sys/kernel/security/** rw, deny /sys/firmware/** rw`.
+  Kept `capability,` wildcard because BlueZ raw socket setup requires an
+  un-audited set of caps; dropping specific caps without a BT-aware test
+  harness risks silent `bthConnect() returned -1` (already burned once in
+  V2-05 revert).
+
+### Polish
+
+- `icon.png` resized to 128×128 (was 50×50).
+- `logo.png` converted JPEG → PNG at correct dimensions.
+- `test/local-test.sh` shellcheck clean (SC2015 + SC2034 gone).
+- CI `lint-markdown` + `lint-prettier` non-blocking (`continue-on-error: true`).
+- `translations/nl.yaml` added (Dutch UI).
+- `docs/UPSTREAM-PR-TEMPLATE.md` removed; `upstream-pr-fixes` branch deleted
+  (fork stays private).
+
 ## 2026.4.17.13 — migrate() removed, gotcha documented
 
 - Discovered the `migrate()` empty-payload trick in 02-publish-heartbeat-discovery.sh

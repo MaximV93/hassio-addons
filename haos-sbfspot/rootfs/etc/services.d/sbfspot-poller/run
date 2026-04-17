@@ -1,0 +1,126 @@
+#!/usr/bin/with-contenv bash
+# ==============================================================================
+# V4 sub-minute poller (services.d long-running).
+#
+# When PollIntervalSec >= 5 this service drives the polling loop in-process,
+# bypassing cron (cron's 1-min resolution is the floor for the legacy path).
+#
+# When PollIntervalSec < 5 this script tail-sleeps so s6-overlay won't respawn
+# it — cron remains the source of truth for polling.
+#
+# Loop invariants:
+#   1. Wait for SBFspot.cfg to exist (gen scripts in services.d/sbfspot/run
+#      write it — parallel startup race).
+#   2. Per iteration: check day/night window; pick interval; invoke
+#      run-sbfspot.sh daemon <timeout> <SBFspot args>.
+#   3. Sleep max(0, interval - elapsed). If SBFspot takes longer than interval
+#      we continue immediately (BT-saturated; logged as drift).
+#   4. Graceful SIGTERM: s6 sends it on addon stop; trap → wait current run,
+#      exit 0. No lock-up on addon restart.
+#
+# Status + hang counting: run-sbfspot.sh updates /data/sbfspot_status.json;
+# publish-heartbeat.sh (cron) publishes to MQTT. Same pipeline as legacy.
+#
+# See docs/ADR-004-sub-minute-polling.md.
+# ==============================================================================
+set -u
+
+readonly OPTIONS=/data/options.json
+readonly SBF=/usr/bin/sbfspot/SBFspot
+readonly SBF_CFG=/usr/bin/sbfspot/SBFspot.cfg
+readonly RUN_WRAPPER=/usr/bin/sbfspot/run-sbfspot.sh
+
+# ---- helpers ----
+opt() {
+    jq -r --arg k "$1" --arg d "$2" \
+       'if .[$k] == null then $d else .[$k] | tostring end' "${OPTIONS}" 2>/dev/null
+}
+
+log() { echo "[sbfspot-poller] $*"; }
+
+POLL_SEC=$(opt PollIntervalSec 0)
+POLL_NIGHT_SEC=$(opt PollIntervalNightSec 0)
+DAY_START=$(opt DayStart 6)
+DAY_END=$(opt DayEnd 22)
+SBF_TIMEOUT_OVERRIDE=$(opt SBFspotTimeoutSec 0)
+
+# Disabled? Sleep forever so s6 considers us healthy.
+if [[ "${POLL_SEC:-0}" =~ ^[0-9]+$ ]] && (( POLL_SEC < 5 )); then
+    log "disabled (PollIntervalSec=${POLL_SEC}, min 5s) — idling"
+    exec sleep infinity
+fi
+
+# Derive per-invocation timeout. When PollIntervalSec < 30 the timeout is
+# short but SBFspot needs >=30s for clean BT handshake; clamp accordingly.
+if (( SBF_TIMEOUT_OVERRIDE > 0 )); then
+    TIMEOUT=${SBF_TIMEOUT_OVERRIDE}
+else
+    TIMEOUT=$(( POLL_SEC > 40 ? POLL_SEC : 40 ))
+fi
+
+# ---- wait for SBFspot.cfg (written by services.d/sbfspot/run — parallel) ----
+WAIT=0
+until [[ -f "${SBF_CFG}" ]]; do
+    sleep 1
+    WAIT=$((WAIT+1))
+    if (( WAIT % 15 == 0 )); then
+        log "waiting for SBFspot.cfg (${WAIT}s elapsed)..."
+    fi
+    if (( WAIT > 300 )); then
+        log "ERROR: SBFspot.cfg not found after 5 min; exiting"
+        exit 1
+    fi
+done
+log "SBFspot.cfg present; entering main loop (day=${POLL_SEC}s night=${POLL_NIGHT_SEC}s timeout=${TIMEOUT}s)"
+
+# ---- graceful shutdown ----
+STOP=0
+on_term() { log "SIGTERM received; will exit after current iteration"; STOP=1; }
+trap on_term TERM INT
+
+# ---- main loop ----
+DRIFT_LOGGED=0
+while (( STOP == 0 )); do
+    HOUR=$(date +%-H)
+    IN_DAY=0
+    IN_NIGHT=0
+    # Day window: DAY_START <= hour <= DAY_END
+    if (( HOUR >= DAY_START && HOUR <= DAY_END )); then
+        IN_DAY=1
+    else
+        IN_NIGHT=1
+    fi
+
+    if (( IN_DAY )); then
+        INTERVAL=${POLL_SEC}
+        KIND=daemon-day
+    elif (( IN_NIGHT )) && (( POLL_NIGHT_SEC >= 5 )); then
+        INTERVAL=${POLL_NIGHT_SEC}
+        KIND=daemon-night
+    else
+        # Night with PollIntervalNightSec=0: sleep 1 min and re-check. Simpler
+        # than computing seconds-until-DayStart on busybox date, and reacts
+        # promptly if operator changes options (supervisor restarts us).
+        sleep 60
+        continue
+    fi
+
+    START=$(date +%s)
+    "${RUN_WRAPPER}" "${KIND}" timeout -s KILL "${TIMEOUT}" "${SBF}" -v -ad1 -am0 -ae0 -mqtt \
+        >/dev/null 2>&1 || true
+    ELAPSED=$(( $(date +%s) - START ))
+
+    if (( ELAPSED >= INTERVAL )); then
+        if (( DRIFT_LOGGED == 0 )); then
+            log "BT-saturated: iteration took ${ELAPSED}s >= interval ${INTERVAL}s; continuing immediately. (suppressing further drift logs)"
+            DRIFT_LOGGED=1
+        fi
+        continue
+    fi
+    # Happy path: sleep remainder. If STOP raised during sleep, trap interrupts.
+    DRIFT_LOGGED=0
+    sleep $(( INTERVAL - ELAPSED )) || true
+done
+
+log "exit 0"
+exit 0

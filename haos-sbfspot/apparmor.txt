@@ -1,13 +1,32 @@
 #include <tunables/global>
 
+# powerslider fork V4 hardening notes:
+#   - `capability,` kept (all caps) because BlueZ raw socket setup requires an
+#     un-audited set of caps (net_raw, net_admin, net_bind_service, sys_admin
+#     for HCI). Dropping specific caps without a BT-aware test harness risks
+#     silent `bthConnect() returned -1` — already burned once (V2-05 revert).
+#   - `network,` replaced by a specific protocol list. BlueZ AF_BLUETOOTH raw
+#     sockets use `network bluetooth`; MQTT/MariaDB/HTTP use IPv4/IPv6 stream;
+#     dgram needed for DNS + misc UDP; netlink for BlueZ management socket.
+#   - Explicit deny rules for kernel-module load, mount, and /proc/sys writes
+#     close the most common container-escape surfaces without touching BT.
 profile haos-sbfspot flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
 
-  # Capabilities
+  # Capabilities — see hardening note above. NOT narrowed yet.
   capability,
   file,
   signal (send) set=(kill,term,int,hup,cont),
-  network,
+
+  # Network — narrowed from `network,` (wildcard) to the specific protocols
+  # this addon actually uses.
+  network bluetooth,
+  network inet stream,
+  network inet dgram,
+  network inet6 stream,
+  network inet6 dgram,
+  network netlink raw,
+  network unix,
 
   # S6-Overlay
   /init ix,
@@ -21,18 +40,26 @@ profile haos-sbfspot flags=(attach_disconnected,mediate_deleted) {
   /etc/cont-finish.d/** rwix,
   /run/{,**} rwk,
   /dev/tty rw,
-  
+
   # Bashio
   # /usr/lib/bashio/** ix,
   # /tmp/** rwk,
 
   # Access to options.json and other files within your addon
   /data/** rw,
-      
+
   # suppress ptrace denials when using 'docker ps' or using 'ps' inside a container
   ptrace (trace,read) peer=docker-default,
- 
+
   # docker daemon confinement requires explict allow rule for signal
   signal (receive) set=(kill,term) peer=/usr/bin/docker,
 
+  # V4: explicit deny rules for surfaces we should never touch.
+  deny mount,
+  deny umount,
+  deny pivot_root,
+  deny capability sys_module,
+  deny @{PROC}/sys/kernel/** w,
+  deny /sys/kernel/security/** rw,
+  deny /sys/firmware/** rw,
 }

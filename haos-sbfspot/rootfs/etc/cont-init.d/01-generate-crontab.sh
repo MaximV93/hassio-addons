@@ -53,6 +53,9 @@ DAY_END=$(opt_or DayEnd 22)
 ENABLE_UPLOAD=$(opt_or EnableUpload true)
 # V2-03: 0 = auto (PollIntervalDay*60-10), else explicit override
 SBF_TIMEOUT_OVERRIDE=$(opt_or SBFspotTimeoutSec 0)
+# V4: sub-minute daemon polling. >= 5 activates the daemon at
+# services.d/sbfspot-poller and SKIPS the day/night cron entries.
+POLL_SEC=$(opt_or PollIntervalSec 0)
 
 # Clamp to documented ranges defensively. Schema rejects out-of-range on save
 # but treat this as belt-and-braces for migrations / malformed overrides.
@@ -123,15 +126,22 @@ fi
     echo "# One-shot publish on container boot (ad0 = today only)"
     echo "@reboot sleep 30 && ${RUN_WRAPPER} reboot timeout -s KILL ${SBF_TIMEOUT} ${SBF} -v -ad0 -am0 -mqtt -finq"
     echo ""
-    echo "# Daytime polling: every ${POLL_DAY} min, hours ${DAY_HOURS}, timeout ${SBF_TIMEOUT}s"
-    echo "*/${POLL_DAY} ${DAY_HOURS} * * *    ${RUN_WRAPPER} day timeout -s KILL ${SBF_TIMEOUT} ${SBF} -v -ad1 -am0 -ae0 -mqtt"
+    # V4: when PollIntervalSec is active, the sbfspot-poller s6 service runs the
+    # day/night loop in-process. Skip the cron entries to avoid double-polling.
+    if (( POLL_SEC >= 5 )); then
+        echo "# Day/night cron poll entries SKIPPED — PollIntervalSec=${POLL_SEC}s"
+        echo "# active; see services.d/sbfspot-poller/run."
+    else
+        echo "# Daytime polling: every ${POLL_DAY} min, hours ${DAY_HOURS}, timeout ${SBF_TIMEOUT}s"
+        echo "*/${POLL_DAY} ${DAY_HOURS} * * *    ${RUN_WRAPPER} day timeout -s KILL ${SBF_TIMEOUT} ${SBF} -v -ad1 -am0 -ae0 -mqtt"
 
-    if (( POLL_NIGHT > 0 )) && [[ -n "${NIGHT_HOURS}" ]]; then
-        echo ""
-        echo "# Nighttime polling: every ${POLL_NIGHT} min, hours ${NIGHT_HOURS}"
-        NIGHT_TIMEOUT=$(( POLL_NIGHT * 60 - 10 ))
-        (( NIGHT_TIMEOUT < 30 )) && NIGHT_TIMEOUT=30
-        echo "*/${POLL_NIGHT} ${NIGHT_HOURS} * * *   ${RUN_WRAPPER} night timeout -s KILL ${NIGHT_TIMEOUT} ${SBF} -v -ad0 -am0 -mqtt"
+        if (( POLL_NIGHT > 0 )) && [[ -n "${NIGHT_HOURS}" ]]; then
+            echo ""
+            echo "# Nighttime polling: every ${POLL_NIGHT} min, hours ${NIGHT_HOURS}"
+            NIGHT_TIMEOUT=$(( POLL_NIGHT * 60 - 10 ))
+            (( NIGHT_TIMEOUT < 30 )) && NIGHT_TIMEOUT=30
+            echo "*/${POLL_NIGHT} ${NIGHT_HOURS} * * *   ${RUN_WRAPPER} night timeout -s KILL ${NIGHT_TIMEOUT} ${SBF} -v -ad0 -am0 -mqtt"
+        fi
     fi
 
     echo ""
@@ -147,16 +157,25 @@ fi
     echo ""
     echo "# Log tail heartbeat (keeps HA log visible during idle)"
     echo "*/${POLL_DAY} ${DAY_HOURS} * * *   /usr/bin/sbfspot/taillog.sh"
+
+    echo ""
+    echo "# V4 hang analyzer: count 'HANG' markers in daily logs → status.json."
+    echo "# Runs every 15 min; publish-heartbeat.sh surfaces hangs_24h/hangs_7d."
+    echo "*/15 * * * *    /usr/bin/sbfspot/hang-analyzer.sh"
 } > /etc/crontabs/root
 
 chmod 600 /etc/crontabs/root
 
 bashio::log.info "Crontab generated:"
-bashio::log.info "  day poll   : every ${POLL_DAY} min, hours ${DAY_HOURS}"
-if (( POLL_NIGHT > 0 )) && [[ -n "${NIGHT_HOURS}" ]]; then
-    bashio::log.info "  night poll : every ${POLL_NIGHT} min, hours ${NIGHT_HOURS}"
+if (( POLL_SEC >= 5 )); then
+    bashio::log.info "  daemon poll: every ${POLL_SEC}s (V4 daemon, cron day/night SKIPPED)"
 else
-    bashio::log.info "  night poll : disabled"
+    bashio::log.info "  day poll   : every ${POLL_DAY} min, hours ${DAY_HOURS}"
+    if (( POLL_NIGHT > 0 )) && [[ -n "${NIGHT_HOURS}" ]]; then
+        bashio::log.info "  night poll : every ${POLL_NIGHT} min, hours ${NIGHT_HOURS}"
+    else
+        bashio::log.info "  night poll : disabled"
+    fi
 fi
 if [[ "${ENABLE_UPLOAD,,}" == "true" ]]; then
     bashio::log.info "  upload     : enabled"

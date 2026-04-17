@@ -30,12 +30,18 @@ run_shellcheck() {
     "$ADDON_DIR/rootfs/etc/cont-init.d/01-generate-crontab.sh"
     "$ADDON_DIR/rootfs/etc/services.d/sbfspot/run"
     "$ADDON_DIR/rootfs/etc/services.d/sbfspot/finish"
+    "$ADDON_DIR/rootfs/etc/services.d/sbfspot-poller/run"
+    "$ADDON_DIR/rootfs/etc/services.d/sbfspot-poller/finish"
     "$ADDON_DIR/rootfs/usr/bin/sbfspot/genBluetoothConfig.sh"
     "$ADDON_DIR/rootfs/usr/bin/sbfspot/genEthernetConfig.sh"
+    "$ADDON_DIR/rootfs/usr/bin/sbfspot/hang-analyzer.sh"
     "$ADDON_DIR/rootfs/usr/bin/sbfspot/taillog.sh"
   )
   local own=(
     "$ADDON_DIR/rootfs/etc/cont-init.d/01-generate-crontab.sh"
+    "$ADDON_DIR/rootfs/etc/services.d/sbfspot-poller/run"
+    "$ADDON_DIR/rootfs/etc/services.d/sbfspot-poller/finish"
+    "$ADDON_DIR/rootfs/usr/bin/sbfspot/hang-analyzer.sh"
   )
   local rc=0
   # Strict on our own code
@@ -146,17 +152,28 @@ run_smoke() {
       assert_match 'SBFspotUploadDaemon'           # upload enabled
       assert_match 'publish-heartbeat.sh'          # V2-02 heartbeat cron
       assert_match 'run-sbfspot.sh day'            # V2-04 wrapped
+      assert_match 'hang-analyzer.sh'              # V4 analyzer cron
       ;;
     options.minimal)
       assert_match 'timeout -s KILL 290'           # default PollIntervalDay=5 → 300-10=290s
       assert_match '\*/5 6-22'
       assert_no_match 'Nighttime polling'
       assert_match 'publish-heartbeat.sh'
+      assert_match 'hang-analyzer.sh'
       ;;
     options.night-off)
       assert_match '\*/5 6-22'
       assert_no_match 'Nighttime polling'
       assert_no_match 'SBFspotUploadDaemon'
+      assert_match 'hang-analyzer.sh'
+      ;;
+    options.daemon)
+      # V4: PollIntervalSec=15 → day/night cron SKIPPED, daemon active.
+      assert_match 'SKIPPED'
+      assert_no_match '^\*/[0-9]+ 6-22 \* \* \*    /usr/bin/sbfspot/run-sbfspot.sh day'
+      assert_match 'publish-heartbeat.sh'          # still cron
+      assert_match 'hang-analyzer.sh'              # still cron
+      assert_no_match 'SBFspotUploadDaemon'        # EnableUpload=false
       ;;
   esac
   green "  smoke $name OK"
