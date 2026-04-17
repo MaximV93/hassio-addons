@@ -2,6 +2,12 @@
 
 # ![Version](https://img.shields.io/badge/dynamic/yaml?label=Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2FMaximV93%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
 
+## 2026.4.17.22 — fixture capture: HARDCODE DEBUG_LEVEL=5 (not via option)
+
+SBFspotDebug option was invisible to existing installs because config.yaml
+default doesn't backfill options.json. Force hardcoded for .22 capture
+window; revert in .23.
+
 ## 2026.4.17.21 — fixture capture: fix SBFspot debug flag syntax
 
 SBFspot V3.9.12 uses `-d5` (no `=`), not `-debug=5`. .20 failed fast with
