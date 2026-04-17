@@ -29,8 +29,8 @@ upstream bug fixes. Published to `ghcr.io/maximv93/`.
   arg. Upstream ran `git clone` without pin → every rebuild pulled whatever
   was on master.
 - **B5** — every SBFspot cron invocation wrapped in `flock -n
-  /run/sbfspot.lock`. Prevents overlapping BT sessions when the inverter takes
-  >1 poll interval to respond (critical at poll rates below 5 min).
+/run/sbfspot.lock`. Prevents overlapping BT sessions when the inverter takes
+  > 1 poll interval to respond (critical at poll rates below 5 min).
 
 ### Infra
 
@@ -49,6 +49,7 @@ upstream bug fixes. Published to `ghcr.io/maximv93/`.
 ### Backlog (v2)
 
 See `MaximV93/hassio-addons` issue tracker tag `haos-sbfspot-v2`:
+
 - chmod 600 on generated SBFspot.cfg (contains plaintext passwords)
 - drop hardcoded day-window; rely on SBFspot's `SunRSOffset` for sunrise/sunset
 - SBFspotUploadDaemon as s6 longrun (auto-restart on crash)
