@@ -70,10 +70,31 @@ grep 'HANG' /data/logs/sbfspot-$(date +%Y-%m-%d).log
 ## 6. Upgrade broke something
 
 Recent versions:
+- `2026.4.17.13` removed the (non-working) migrate() trick from 02-publish-heartbeat-discovery.sh
+- `2026.4.17.12` added `object_id` to discovery configs (new installs only)
 - `2026.4.17.8` introduced heartbeat sensors + run-sbfspot.sh wrapper
 - `2026.4.17.6` tried `host_network: false`, broke BT. **Do not downgrade to 6/7/8 from 9+** unless you want to test that regression.
 
 Rollback: addon UI → 3-dot menu → Rebuild → pick previous version from dropdown. Or rebuild from source tag via Supervisor CLI.
+
+### Stuck entity IDs after upgrade
+
+**Symptom**: you upgraded past `2026.4.17.12` but your heartbeat sensors are
+still named `sensor.haos_sbfspot_powerslider_sbfspot_*` instead of
+`sensor.sbfspot_*`.
+
+**Cause**: HA's entity registry is sticky by `unique_id`. Adding `object_id`
+to MQTT discovery only affects brand-new registry entries. Publishing an
+empty payload to the discovery topic removes the MQTT binding but leaves
+the registry entry intact — so HA re-uses the old entity_id when the new
+discovery arrives.
+
+**Fix (UI)**: Settings → Devices & Services → MQTT → sbfspot_addon device
+→ click each of the 4 sensors → edit ID → set to the short name.
+
+**Fix (WebSocket, scripted)**: call `config/entity_registry/update` with
+`entity_id` (old) and `new_entity_id` (new). See the rename helper at
+`haos-sbfspot/tools/rename_legacy_entities.py`.
 
 ## 7. Data comes in, but hangs are frequent
 

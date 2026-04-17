@@ -27,34 +27,17 @@ pub() {
         -t "$1" -m "$2" --retain --quiet 2>/dev/null || true
 }
 
-# V3-03 migration (in 2026.4.17.12): HA MQTT discovery tracks entities by
-# unique_id and does not rename existing entities when we add object_id.
-# Publishing an empty payload to the discovery topic tells HA to remove the
-# entity — then re-publishing the config creates a fresh entity respecting
-# object_id. Idempotent on subsequent starts (old entity is already gone).
+# V3-03: `object_id` in each discovery config makes HA use it as the entity_id
+# slug (becomes `sensor.sbfspot_cron_heartbeat`) instead of `device.name +
+# unique_id` (`sensor.haos_sbfspot_powerslider_sbfspot_cron_heartbeat`).
 #
-# One-time cost: automations/dashboards pointing at old entity_ids will break
-# on first run of 2026.4.17.12+. Documented in CHANGELOG and DOCS.md.
-migrate() {
-    /usr/bin/mosquitto_pub \
-        -h "${MQTT_HOST}" -p "${MQTT_PORT}" \
-        -u "${MQTT_USER}" -P "${MQTT_PASS}" \
-        -t "$1" -m "" --retain --quiet 2>/dev/null || true
-}
-migrate "homeassistant/sensor/sbfspot_cron_heartbeat/config"
-migrate "homeassistant/sensor/sbfspot_last_status/config"
-migrate "homeassistant/sensor/sbfspot_hang_count/config"
-migrate "homeassistant/sensor/sbfspot_last_duration/config"
-sleep 2
-
-# V3-03: adding `object_id` to each discovery config forces HA to use it as
-# entity_id instead of slug'ing device.name + unique_id. Without it, our sensors
-# ended up as `sensor.haos_sbfspot_powerslider_sbfspot_cron_heartbeat`. With it,
-# they become `sensor.sbfspot_cron_heartbeat` (cleaner, matches unique_id).
-# NOTE: users upgrading past 2026.4.17.9 will see their existing long-named
-# entities go stale (no updates). Repoint dashboards/automations to the new
-# short names. The old entities become orphans and can be removed via Settings
-# → Devices → MQTT → sbfspot_addon device (then orphans appear for deletion).
+# GOTCHA for upgraders: HA's entity registry is sticky by unique_id. Once an
+# entity exists, adding `object_id` does NOT rename it — not even by publishing
+# an empty payload to the discovery topic (HA preserves the entity_id across
+# discovery removal + re-add). Fresh installs pick up object_id correctly.
+# Upgraders must rename via Settings → Devices → MQTT → entity → edit ID, or
+# via WebSocket `config/entity_registry/update {new_entity_id: ...}`. See
+# docs/TROUBLESHOOTING.md "Stuck entity IDs after upgrade".
 #
 # Heartbeat timestamp sensor
 pub "homeassistant/sensor/sbfspot_cron_heartbeat/config" '{

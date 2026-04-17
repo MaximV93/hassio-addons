@@ -2,6 +2,17 @@
 
 # ![Version](https://img.shields.io/badge/dynamic/yaml?label=Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2FMaximV93%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
 
+## 2026.4.17.13 — migrate() removed, gotcha documented
+
+- Discovered the `migrate()` empty-payload trick in 02-publish-heartbeat-discovery.sh
+  does **not** rename existing entities. HA's entity registry preserves the
+  `entity_id` across MQTT discovery removal + re-add when the `unique_id` is
+  unchanged. `object_id` only applies to brand-new registry entries.
+- Removed the misleading migrate() block. Fresh installs continue to pick up
+  `object_id` correctly (no existing registry entry).
+- Upgraders on this install: renamed 4 entities in-place via WebSocket
+  `config/entity_registry/update` (see ADR-003 and docs/TROUBLESHOOTING.md).
+
 ## 2026.4.17 — powerslider fork v1
 
 Fork of `habuild/hassio-addons/haos-sbfspot` with configurable polling and

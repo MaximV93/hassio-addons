@@ -79,7 +79,8 @@ Discovery configs are published once by `cont-init.d/02-publish-heartbeat-discov
 
 ## Consequences
 
-- HA entity IDs are uglified by HA's device-based naming: `sensor.haos_sbfspot_powerslider_sbfspot_cron_heartbeat` rather than `sensor.sbfspot_cron_heartbeat`. This is a function of having a `device:` block in the discovery config. A future cleanup (ADR-005 candidate) can add `object_id` to the discovery to override, at the cost of breaking existing dashboards that reference current IDs.
+- HA entity IDs are uglified by HA's device-based naming: `sensor.haos_sbfspot_powerslider_sbfspot_cron_heartbeat` rather than `sensor.sbfspot_cron_heartbeat`. Fixed in `2026.4.17.12` by adding `object_id` to the discovery configs.
+- **Entity registry stickiness gotcha** (discovered 2026.4.17.13): `object_id` only applies to brand-new registry entries. Existing installs keep their old entity_id even after re-publishing discovery with the new `object_id`. HA's MQTT discovery "remove on empty" unregisters the entity from the MQTT integration but preserves its entity_id/unique_id mapping in the registry — so the next discovery reuses the old entity_id. Rename requires `config/entity_registry/update` via the WebSocket API. See `haos-sbfspot/tools/rename_legacy_entities.py`.
 - One extra cron job per minute (the heartbeat publisher). Trivial load.
 - `/data/sbfspot_status.json` is an ephemeral state file. Survives addon restart but not uninstall. Acceptable.
 
