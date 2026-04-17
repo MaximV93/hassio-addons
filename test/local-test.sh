@@ -140,11 +140,14 @@ run_smoke() {
       assert_match '\*/1 6-22 \* \* \*'
       assert_match '\*/15 23-23,0-5 \* \* \*'
       assert_match 'SBFspotUploadDaemon'           # upload enabled
+      assert_match 'publish-heartbeat.sh'          # V2-02 heartbeat cron
+      assert_match 'run-sbfspot.sh day'            # V2-04 wrapped
       ;;
     options.minimal)
       assert_match 'timeout -s KILL 290'           # default PollIntervalDay=5 → 300-10=290s
       assert_match '\*/5 6-22'
       assert_no_match 'Nighttime polling'
+      assert_match 'publish-heartbeat.sh'
       ;;
     options.night-off)
       assert_match '\*/5 6-22'

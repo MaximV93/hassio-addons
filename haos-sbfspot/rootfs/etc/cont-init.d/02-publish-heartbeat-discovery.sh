@@ -1,0 +1,61 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# V2-02: publish MQTT discovery configs for the heartbeat + status sensors.
+# Runs once at addon start so HA auto-creates:
+#   - sensor.sbfspot_cron_heartbeat (timestamp)
+#   - sensor.sbfspot_last_status    (string: ok|failed-N|missing)
+# Subsequent publishes happen via publish-heartbeat.sh on every cron tick.
+# ==============================================================================
+set -euo pipefail
+
+readonly OPTIONS=/data/options.json
+
+MQTT_HOST=$(jq -r '.MQTT_Host // "core-mosquitto"' "${OPTIONS}")
+MQTT_PORT=$(jq -r '.MQTT_Port // "1883"' "${OPTIONS}")
+MQTT_USER=$(jq -r '.MQTT_User // empty' "${OPTIONS}")
+MQTT_PASS=$(jq -r '.MQTT_Pass // empty' "${OPTIONS}")
+
+if [[ -z "${MQTT_USER}" || -z "${MQTT_PASS}" ]]; then
+    bashio::log.warning "V2-02 heartbeat: MQTT credentials missing, skipping discovery publish"
+    exit 0
+fi
+
+pub() {
+    /usr/bin/mosquitto_pub \
+        -h "${MQTT_HOST}" -p "${MQTT_PORT}" \
+        -u "${MQTT_USER}" -P "${MQTT_PASS}" \
+        -t "$1" -m "$2" --retain --quiet 2>/dev/null || true
+}
+
+# Heartbeat timestamp sensor
+pub "homeassistant/sensor/sbfspot_cron_heartbeat/config" '{
+    "name": "SBFspot Cron Heartbeat",
+    "state_topic": "homeassistant/sbfspot/cron_heartbeat",
+    "device_class": "timestamp",
+    "unique_id": "sbfspot_cron_heartbeat",
+    "entity_category": "diagnostic",
+    "icon": "mdi:heart-pulse",
+    "device": {
+        "identifiers": ["sbfspot_addon"],
+        "name": "HAOS-SBFspot (powerslider)",
+        "manufacturer": "powerslider fork",
+        "model": "haos-sbfspot"
+    }
+}'
+
+# Last run status sensor
+pub "homeassistant/sensor/sbfspot_last_status/config" '{
+    "name": "SBFspot Last Run Status",
+    "state_topic": "homeassistant/sbfspot/last_status",
+    "unique_id": "sbfspot_last_status",
+    "entity_category": "diagnostic",
+    "icon": "mdi:check-circle-outline",
+    "device": {
+        "identifiers": ["sbfspot_addon"],
+        "name": "HAOS-SBFspot (powerslider)",
+        "manufacturer": "powerslider fork",
+        "model": "haos-sbfspot"
+    }
+}'
+
+bashio::log.info "V2-02 heartbeat: MQTT discovery published for cron_heartbeat + last_status"
