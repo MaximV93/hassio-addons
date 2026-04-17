@@ -9,7 +9,13 @@ CFG_PATH_UPLOAD="${2}"
 #  CONFIG_LOCALBTADDRESS="$(bashio::config 'LocalBTAddress' '00:00:00:00:00:00' )"
 CONFIG_IP_ADDRESS="$(bashio::config 'IP_Address' '255.255.255.255' )"
 CONFIG_PASSWORD="$(bashio::config 'Password' '0000' )"
-CONFIG_MSI_ENABLED="$(bashio::config 'MIS_Enabled' '0')"
+# powerslider fork V2-08: MIS_Enabled is now bool in schema (was int). SBFspot
+# expects 0/1 integer in cfg file; coerce true/false (or legacy 0/1) here.
+_mis_raw="$(bashio::config 'MIS_Enabled' 'false')"
+case "${_mis_raw,,}" in
+    true|1)  CONFIG_MSI_ENABLED=1 ;;
+    *)       CONFIG_MSI_ENABLED=0 ;;
+esac
 CONFIG_PLANTNAME="$(bashio::config 'Plantname')"
 CONFIG_OUTPUTPATH="$(bashio::config 'OutputPath' '/data/sbfspot/%Y')"
 CONFIG_OUTPUTPATHEVENTS="$(bashio::config 'OutputPathEvents' '/data/sbfspot/%Y/events')"

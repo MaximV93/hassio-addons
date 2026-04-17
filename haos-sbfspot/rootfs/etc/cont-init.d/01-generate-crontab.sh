@@ -51,6 +51,8 @@ POLL_NIGHT=$(opt_or PollIntervalNight 0)
 DAY_START=$(opt_or DayStart 6)
 DAY_END=$(opt_or DayEnd 22)
 ENABLE_UPLOAD=$(opt_or EnableUpload true)
+# V2-03: 0 = auto (PollIntervalDay*60-10), else explicit override
+SBF_TIMEOUT_OVERRIDE=$(opt_or SBFspotTimeoutSec 0)
 
 # Clamp to documented ranges defensively. Schema rejects out-of-range on save
 # but treat this as belt-and-braces for migrations / malformed overrides.
@@ -82,8 +84,13 @@ readonly UPLOAD_CFG=/usr/bin/sbfspot/SBFspotUpload.cfg
 #
 # BusyBox `timeout -s KILL <secs>` sends SIGKILL after the timeout. 10s buffer
 # leaves time for BT-session cleanup before next tick fires.
-SBF_TIMEOUT=$(( POLL_DAY * 60 - 10 ))
-(( SBF_TIMEOUT < 30 )) && SBF_TIMEOUT=30
+# V2-03: user override vs auto-derived cap
+if (( SBF_TIMEOUT_OVERRIDE > 0 )); then
+    SBF_TIMEOUT=${SBF_TIMEOUT_OVERRIDE}
+else
+    SBF_TIMEOUT=$(( POLL_DAY * 60 - 10 ))
+    (( SBF_TIMEOUT < 30 )) && SBF_TIMEOUT=30
+fi
 readonly SBF_WRAPPED="timeout -s KILL ${SBF_TIMEOUT} ${SBF}"
 
 DAY_HOURS="${DAY_START}-${DAY_END}"
@@ -150,4 +157,8 @@ if [[ "${ENABLE_UPLOAD,,}" == "true" ]]; then
 else
     bashio::log.info "  upload     : disabled"
 fi
-bashio::log.info "  SBFspot cap: ${SBF_TIMEOUT}s (day), 300s (archive)"
+if (( SBF_TIMEOUT_OVERRIDE > 0 )); then
+    bashio::log.info "  SBFspot cap: ${SBF_TIMEOUT}s (explicit override), 300s (archive)"
+else
+    bashio::log.info "  SBFspot cap: ${SBF_TIMEOUT}s (auto = day_poll-10), 300s (archive)"
+fi

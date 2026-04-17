@@ -1,6 +1,6 @@
 ---
 name: HAOS-SBFspot (powerslider)
-version: 2026.4.17.3
+version: 2026.4.17.4
 slug: haos-sbfspot
 description: SBFspot addon — configurable polling + upstream bug fixes
 url: "https://github.com/MaximV93/hassio-addons/tree/main/haos-sbfspot"
@@ -25,39 +25,55 @@ services:
 options:
   Connection_Type: "Bluetooth"
   Sensors_HA: "No"
-  BTAddress: "!secret BTAddress"
-  Password: "!secret SBFpassword"
-  LocalBTAddress: "!secret LocalBTAddress"
-  IP_Address: "55.255.255.254"
-  Plantname: "!secret SBFplantname"
-  Latitude: "!secret home_lat"
-  Longitude: "!secret home_long"
-  Timezone: "!secret Timezone"
-  DateTimeFormat: "'%H:%M:%S %d-%m-%y'"
-  SQL_Password: "!secret mariadb_pw"
-  MQTT_User: "!secret mqtt_user"
-  MQTT_Pass: "!secret mqtt_pass"
+  # --- powerslider fork V2-07: defaults are plain values, not !secret refs.
+  # Fresh install previously crashed with "secret BTAddress not found" unless
+  # secrets.yaml was pre-populated. Users can still reference secrets via UI.
+  BTAddress: ""
+  Password: ""
+  LocalBTAddress: ""
+  IP_Address: "0.0.0.0"
+  Plantname: "SBFspot"
+  Latitude: "50.80"
+  Longitude: "4.33"
+  Timezone: "Europe/Brussels"
+  DateTimeFormat: "%H:%M:%S %d-%m-%y"
+  MIS_Enabled: false
+  SQL_Database: "sbfspot"
+  SQL_Hostname: "core-mariadb"
+  SQL_Port: "3306"
+  SQL_Username: "sbfspot"
+  SQL_Password: ""
+  MQTT_Host: "core-mosquitto"
+  MQTT_Port: "1883"
+  MQTT_User: ""
+  MQTT_Pass: ""
   MQTT_Topic: "homeassistant/sbfspot_{plantname}/sbfspot_{serial}"
   MQTT_Data: >-
     PrgVersion,Plantname,Timestamp,SunRise,SunSet,InvSerial,InvName,InvTime,InvStatus,InvSwVer,InvClass,InvType,InvTemperature,InvGridRelay,EToday,ETotal,GridFreq,PACTot,PAC1,UAC1,IAC1,OperTm,FeedTm,PDCTot,UDC1,UDC2,IDC1,IDC2,PDC1,PDC2,BTSignal,InvWakeupTm,InvSleepTm
-  PVoutput_SID: "!secret pvoSID"
-  PVoutput_Key: "!secret pvoAPIkey"
+  PVoutput_SID: ""
+  PVoutput_Key: ""
   LogLevel: info
-  # --- powerslider fork additions ---
+  # --- powerslider fork polling + runtime controls ---
   PollIntervalDay: 5
   PollIntervalNight: 0
   DayStart: 6
   DayEnd: 22
   EnableUpload: true
+  # V2-03: explicit timeout override (seconds). 0 = auto (PollIntervalDay*60-10).
+  # Use when BT signal is marginal and legitimate runs exceed the auto cap.
+  SBFspotTimeoutSec: 0
 schema:
   Connection_Type: list(Bluetooth|Ethernet)?
   Sensors_HA: list(No||Create||Purge|)?
-  BTAddress: "str"
-  Password: "password"
+  BTAddress: "str?"
+  Password: "password?"
   LocalBTAddress: "str?"
   IP_Address: "str?"
-  Plantname: "str"
-  MIS_Enabled: "int?"
+  Plantname: "str?"
+  # V2-08: MIS_Enabled is semantically a bool; schema int? kept UI as number
+  # field. Switched to bool for a cleaner toggle; backward-compat: legacy int
+  # values 0/1 get coerced by bashio::var.true / jq truthy check.
+  MIS_Enabled: "bool?"
   OutputPath: "str?"
   OutputPathEvents: "str?"
   Latitude: "str?"
@@ -89,13 +105,13 @@ schema:
   MQTT_Publisher: "str?"
   MQTT_Host: "str?"
   MQTT_Port: "str?"
-  MQTT_User: "str"
-  MQTT_Pass: "password"
-  MQTT_Topic: "str"
+  MQTT_User: "str?"
+  MQTT_Pass: "password?"
+  MQTT_Topic: "str?"
   MQTT_ItemFormat: "str?"
   MQTT_ItemDelimiter: str?
   MQTT_PublisherArgs: str?
-  MQTT_Data: "str"
+  MQTT_Data: "str?"
   PVoutput_SID: "password?"
   PVoutput_Key: "password?"
   LogLevel: list(debug|info||warning||error)?
@@ -105,3 +121,4 @@ schema:
   DayStart: "int(0,23)?"
   DayEnd: "int(1,23)?"
   EnableUpload: "bool?"
+  SBFspotTimeoutSec: "int(0,600)?"
