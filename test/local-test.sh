@@ -44,6 +44,7 @@ run_shellcheck() {
     "$ADDON_DIR/rootfs/usr/bin/sbfspot/hang-analyzer.sh"
     "$ADDON_DIR/rootfs/usr/bin/sbfspot/bt-reset.sh"
     "$ADDON_DIR/rootfs/usr/bin/sbfspot/db-retention.sh"
+    "$ADDON_DIR/rootfs/usr/bin/sbfspot/bt-health.sh"
     "$ADDON_DIR/rootfs/usr/bin/sbfspot/lib/common.sh"
   )
   local rc=0
@@ -157,6 +158,7 @@ run_smoke() {
       assert_match 'run-sbfspot.sh day'            # V2-04 wrapped
       assert_match 'hang-analyzer.sh'              # V4 analyzer cron
       assert_match 'db-retention.sh'               # V5 retention cron
+      assert_match 'bt-health.sh'                  # V5+ BT health cron
       ;;
     options.minimal)
       assert_match 'timeout -s KILL 290'           # default PollIntervalDay=5 → 300-10=290s

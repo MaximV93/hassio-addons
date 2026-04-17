@@ -2,6 +2,17 @@
 
 # ![Version](https://img.shields.io/badge/dynamic/yaml?label=Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2FMaximV93%2Fhassio-addons%2Fmain%2Fhaos-sbfspot%2Fconfig.yaml)
 
+## 2026.4.17.17 — BT adapter health monitoring
+
+### Feature
+
+- **bt-health.sh** parses `hciconfig -a hci0` every 5 min, publishes RX/TX
+  bytes + error counters to MQTT. 4 new diagnostic sensors:
+  `sbfspot_bt_rx_errors`, `sbfspot_bt_tx_errors`, `sbfspot_bt_rx_bytes`,
+  `sbfspot_bt_tx_bytes`. Correlate with `hang_count` to diagnose *why*
+  hangs occur (interference, dongle failure, cable). Discovery configs
+  published from `02-publish-heartbeat-discovery.sh`.
+
 ## 2026.4.17.16 — V5 polish: BT auto-reset, DB retention, supply chain hardening, common.sh refactor
 
 ### Features

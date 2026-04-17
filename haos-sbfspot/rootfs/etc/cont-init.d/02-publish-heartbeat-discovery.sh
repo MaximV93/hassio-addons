@@ -107,6 +107,75 @@ pub "homeassistant/sensor/sbfspot_last_duration/config" '{
     }
 }'
 
+# V5+ BT health from hciconfig -a hci0 (cron every 5 min)
+pub "homeassistant/sensor/sbfspot_bt_rx_errors/config" '{
+    "name": "SBFspot BT RX Errors",
+    "object_id": "sbfspot_bt_rx_errors",
+    "state_topic": "homeassistant/sbfspot/bt_rx_errors",
+    "unique_id": "sbfspot_bt_rx_errors",
+    "entity_category": "diagnostic",
+    "state_class": "total_increasing",
+    "icon": "mdi:bluetooth-off",
+    "device": {
+        "identifiers": ["sbfspot_addon"],
+        "name": "HAOS-SBFspot (powerslider)",
+        "manufacturer": "powerslider fork",
+        "model": "haos-sbfspot"
+    }
+}'
+
+pub "homeassistant/sensor/sbfspot_bt_tx_errors/config" '{
+    "name": "SBFspot BT TX Errors",
+    "object_id": "sbfspot_bt_tx_errors",
+    "state_topic": "homeassistant/sbfspot/bt_tx_errors",
+    "unique_id": "sbfspot_bt_tx_errors",
+    "entity_category": "diagnostic",
+    "state_class": "total_increasing",
+    "icon": "mdi:bluetooth-off",
+    "device": {
+        "identifiers": ["sbfspot_addon"],
+        "name": "HAOS-SBFspot (powerslider)",
+        "manufacturer": "powerslider fork",
+        "model": "haos-sbfspot"
+    }
+}'
+
+pub "homeassistant/sensor/sbfspot_bt_rx_bytes/config" '{
+    "name": "SBFspot BT RX Bytes",
+    "object_id": "sbfspot_bt_rx_bytes",
+    "state_topic": "homeassistant/sbfspot/bt_rx_bytes",
+    "unique_id": "sbfspot_bt_rx_bytes",
+    "entity_category": "diagnostic",
+    "state_class": "total_increasing",
+    "device_class": "data_size",
+    "unit_of_measurement": "B",
+    "icon": "mdi:bluetooth-transfer",
+    "device": {
+        "identifiers": ["sbfspot_addon"],
+        "name": "HAOS-SBFspot (powerslider)",
+        "manufacturer": "powerslider fork",
+        "model": "haos-sbfspot"
+    }
+}'
+
+pub "homeassistant/sensor/sbfspot_bt_tx_bytes/config" '{
+    "name": "SBFspot BT TX Bytes",
+    "object_id": "sbfspot_bt_tx_bytes",
+    "state_topic": "homeassistant/sbfspot/bt_tx_bytes",
+    "unique_id": "sbfspot_bt_tx_bytes",
+    "entity_category": "diagnostic",
+    "state_class": "total_increasing",
+    "device_class": "data_size",
+    "unit_of_measurement": "B",
+    "icon": "mdi:bluetooth-transfer",
+    "device": {
+        "identifiers": ["sbfspot_addon"],
+        "name": "HAOS-SBFspot (powerslider)",
+        "manufacturer": "powerslider fork",
+        "model": "haos-sbfspot"
+    }
+}'
+
 # V4 hang-analyzer: 24h + 7d rolling counts from /data/logs/sbfspot-*.log
 pub "homeassistant/sensor/sbfspot_hangs_24h/config" '{
     "name": "SBFspot Hangs 24h",

@@ -167,6 +167,11 @@ fi
     echo "# V5 DB retention: nightly SpotData cleanup. Opt-out via DbRetentionDays=0."
     echo "# Skipped entirely on cron path unless user overrides DbRetentionDays default."
     echo "0 3 * * *       /usr/bin/sbfspot/db-retention.sh"
+
+    echo ""
+    echo "# V5+ BT adapter health: hciconfig -a parsing + MQTT publish every 5 min."
+    echo "# Correlate with hang_count to diagnose BT-stack root cause."
+    echo "*/5 * * * *     /usr/bin/sbfspot/bt-health.sh"
 } > /etc/crontabs/root
 
 chmod 600 /etc/crontabs/root
