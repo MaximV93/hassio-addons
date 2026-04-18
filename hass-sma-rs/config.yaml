@@ -1,6 +1,6 @@
 ---
 name: hass-sma-rs (Rust rewrite)
-version: 0.1.31
+version: 0.1.32
 slug: hass-sma-rs
 description: SMA Sunny Boy BT daemon — Rust rewrite, parallel-run alongside haos-sbfspot
 url: "https://github.com/MaximV93/hass-sma-rs"
@@ -48,6 +48,8 @@ schema:
       model: "str?"
       firmware: "str?"
       mis_enabled: "bool?"
+      yield_every: "int?"
+      yield_duration: "str?"
   local_bt_address: "str?"
   rfcomm_timeout: "str?"
   metrics_addr: "str?"
