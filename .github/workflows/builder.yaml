@@ -126,26 +126,14 @@ jobs:
             --docker-hub "ghcr.io/${{ github.repository_owner }}" \
             --addon
 
-      # powerslider fork V5: supply-chain hardening. Cosign keyless signing
-      # via GitHub OIDC (no secrets to rotate). Trivy CVE scan + SBOM in SPDX
-      # format. Runs only on push (not --test builds).
-      - name: Install Cosign
-        if: env.BUILD_ARGS != '--test' && steps.check.outputs.build_arch == 'true'
-        continue-on-error: true  # upstream cosign-installer regression (v2.5.3 default rejected); signing is non-blocking
-        uses: sigstore/cosign-installer@v4.1.1
-        with:
-          cosign-release: v2.6.0
-
-      - name: Sign image with Cosign
-        if: env.BUILD_ARGS != '--test' && steps.check.outputs.build_arch == 'true'
-        env:
-          COSIGN_EXPERIMENTAL: "true"
-        run: |
-          VERSION=$(grep -E '^version:' ./${{ matrix.addon }}/config.yaml | awk '{print $2}')
-          IMAGE="ghcr.io/${{ github.repository_owner }}/${{ matrix.arch }}-addon-$(basename ${{ matrix.addon }})"
-          for TAG in "${VERSION}" "latest"; do
-            cosign sign --yes "${IMAGE}:${TAG}" || echo "Cosign sign of ${IMAGE}:${TAG} failed (non-blocking)"
-          done
+      # powerslider fork: cosign signing temporarily disabled — upstream
+      # sigstore/cosign-installer@v4.1.1 hardcodes v2.5.3 default which is
+      # now rejected ("cosign versions below v2.6.0 are not supported") by
+      # the installer's own validation. Private fork, no downstream consumers
+      # needing signatures. Re-enable once cosign-installer fixes the
+      # default, or bump to v4.x that supports cosign-release input.
+      # - name: Install Cosign
+      # - name: Sign image with Cosign
 
       - name: Trivy CVE scan
         if: env.BUILD_ARGS != '--test' && steps.check.outputs.build_arch == 'true'
